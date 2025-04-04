@@ -14,158 +14,14 @@
 #include <sys/types.h>
 #include <vector>
 
-class Window {
-public:
-    explicit Window(std::string_view title, SDL_Point wh)
-    : sdl_window{ SDL_CreateWindow(title.data(), wh.x, wh.y, 0) } {
-        if (!sdl_window) {
-            SDL_Log("CANT CREATE ©Window : %s\n", SDL_GetError());
-        }
-    }
-    ~Window() {
-        if (sdl_window) {
-            SDL_DestroyWindow(sdl_window);
-        }
-    }
-    Window(const Window& w)           = delete;
-    Window operator=(const Window& w) = delete;
-    operator SDL_Window*() {
-        return sdl_window;
-    }
-
-private:
-    SDL_Window* sdl_window;
-};
-
-class Renderer {
-public:
-    explicit Renderer(Window* w)
-    : sdl_renderer{ SDL_CreateRenderer(*w, nullptr) } {
-        if (!sdl_renderer) {
-            SDL_Log("CANT CREATE ©Renderer : %s\n", SDL_GetError());
-        }
-    }
-    ~Renderer() {
-        if (sdl_renderer) {
-            SDL_DestroyRenderer(sdl_renderer);
-        }
-    }
-    Renderer(const Renderer& r)           = delete;
-    Renderer operator=(const Renderer& r) = delete;
-    operator SDL_Renderer*() {
-        return sdl_renderer;
-    }
-
-private:
-    SDL_Renderer* sdl_renderer;
-};
-
-
-class Widget {
-public:
-    explicit Widget(float x, float y) : target_geometry{ x, y, -1.f, -1.f } {
-    }
-    ~Widget() {
-        // std::cout << target_geometry.x << " " << target_geometry.y << '\n';
-        destroy();
-    }
-    Widget(Widget& w) {
-        if (*this == w) {
-            return;
-        }
-        target_geometry = w.target_geometry;
-        texture         = w.texture;
-        w.texture       = nullptr;
-    }
-    Widget operator=(const Widget& w) = delete;
-    operator SDL_Texture*() const {
-        return texture;
-    }
-
-
-    void setGeo(const SDL_FRect& geo) {
-        target_geometry = geo;
-    }
-
-    SDL_FRect getGeo() {
-        return target_geometry;
-    }
-
-    bool LoadFromImage(const std::string_view path, SDL_Renderer* renderer) {
-        bool fail{ false };
-        SDL_Surface* loadedSurface{ IMG_Load(path.data()) };
-
-        if (!loadedSurface) {
-            SDL_Log("CANT CREATE SDL_Surface: %s\n", SDL_GetError());
-            fail = true;
-        } else {
-            if (texture = SDL_CreateTextureFromSurface(renderer, loadedSurface); !texture) {
-                SDL_Log("CANT CRATE SDL_Texture: %s\n", SDL_GetError());
-                fail = true;
-            }
-            target_geometry.w = static_cast<float>(texture->w);
-            target_geometry.h = static_cast<float>(texture->h);
-            SDL_DestroySurface(loadedSurface);
-        }
-        return fail;
-    }
-
-    bool loadFromTTF(const std::string_view path,
-                     std::string_view text,
-                     SDL_Color text_color,
-                     float ptsize,
-                     SDL_Renderer* renderer) {
-        destroy();
-        bool fail{ false };
-
-        TTF_Font* font{ TTF_OpenFont(path.data(), ptsize) };
-        if (!font) {
-            SDL_Log("CANT CREATE FONT %s\n", SDL_GetError());
-            fail = true;
-        } else {
-            SDL_Surface* textSurface{ TTF_RenderText_Solid(font, text.data(), 0, text_color) };
-            if (!textSurface) {
-                SDL_Log("CANT CREATE SDL_Surface* textSurface: %s\n", SDL_GetError());
-                fail = true;
-            } else {
-                if (texture = SDL_CreateTextureFromSurface(renderer, textSurface); !texture) {
-                    SDL_Log("CANT CRATE SDL_Texture: %s\n", SDL_GetError());
-                    fail = true;
-                }
-                target_geometry.w = static_cast<float>(texture->w);
-                target_geometry.h = static_cast<float>(texture->h);
-                SDL_DestroySurface(textSurface);
-            }
-            TTF_CloseFont(font);
-            font = nullptr;
-        }
-        return fail;
-    }
-
-    bool isPointIn(float mouse_x, float mouse_y) {
-        if ((mouse_x >= getGeo().x) && (mouse_x <= (getGeo().x + getGeo().w))) {
-            if ((mouse_y >= getGeo().y) && (mouse_y <= (getGeo().y + getGeo().h))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    void destroy() {
-        if (texture) {
-            SDL_DestroyTexture(texture);
-            texture = nullptr;
-        }
-    }
-
-private:
-    SDL_FRect target_geometry{};
-    SDL_Texture* texture{ nullptr };
-};
-
+#include "cwindow.h"
+#include "crenderer.h"
+#include "cwidget.h"
 
 class MainWindow {
+    using Window = HGS::Window;
+    using Renderer = HGS::Renderer;
+    using Widget = HGS::Widget;
 public:
     explicit MainWindow(const std::string_view title, const SDL_Rect& geo, const SDL_Color& color)
     : width{ geo.w }, height{ geo.h }, color{ color } {
@@ -242,7 +98,7 @@ private:
     SDL_Color color{};
 };
 
-class Paddle : public Widget {
+class Paddle : public HGS::Widget {
 public:
     void setVel(int v) {
         vel = v;
@@ -282,6 +138,7 @@ enum EXIT_MENU_WIDGETS { EXIT_LOGO, EXIT_YES, EXIT_NO };
  * Main entrance
  */
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+    using Widget = HGS::Widget;
     MainWindow mw{ "AdanaMerkez", { 0, 0, 1280, 720 }, { 0X44, 0xAA, 0X44, 0XFF } };
 
     size_t active_scene{ 0 };
