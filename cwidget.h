@@ -8,15 +8,12 @@ namespace HGS
     class Widget
     {
     public:
-        Widget();
+        Widget() = default;
         Widget(float x, float y, float w, float h);
         Widget(const SDL_FRect &g);
-        Widget(const Widget &w);
-        Widget(const Widget *w);
-        Widget &operator=(const Widget &w);
         bool operator==(const Widget &w);
         bool operator!=(const Widget &w);
-        virtual ~Widget();
+        virtual ~Widget() = default;
 
         SDL_FRect getGeo () const;
         void setGeo(const SDL_FRect &geo);
