@@ -10,7 +10,7 @@ add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
 
 #demo pong game
-add_executable(demo WIN32 demo.cpp
+add_executable(demo demo.cpp
                           cwindow.cpp cwindow.h
                           crenderer.cpp crenderer.h
                           cwidget.cpp cwidget.h)

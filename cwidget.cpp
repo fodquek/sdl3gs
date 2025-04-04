@@ -1,98 +1,81 @@
 #include "cwidget.h"
+#include <iostream>
+
+namespace std{
+    std::ostream &operator<<(std::ostream &os, const HGS::Widget &w)
+    {
+        const auto& fr {w.getGeo()};
+        return os << "[x: " << fr.x
+                << ", y: " << fr.y
+                << ", w: " << fr.w
+                << ", h: " << fr.h
+                << "]\n";
+    }
+}
+
+
 namespace HGS
 {
-    Widget::Widget(float x, float y) : target_geometry{x, y, -1.f, -1.f}
+    Widget::Widget() : geometry{} 
     {
+        std::cout << "0\n";
     }
-    Widget::~Widget()
+    Widget::Widget(float x, float y, float w, float h) : geometry{x, y, w, h}
     {
-         destroy();
+        std::cout << "1\n";
     }
-    Widget::Widget(Widget &w)
+
+    Widget::Widget(const SDL_FRect &g) : geometry{g}
     {
-        if (*this == w)
+        std::cout << "2\n";
+    }
+    Widget::Widget(const Widget &w)
+    {
+        std::cout << "3\n";
+        if (this == &w)
         {
             return;
         }
-        target_geometry = w.target_geometry;
-        texture = w.texture;
-        w.texture = nullptr;
+        geometry = w.geometry;
     }
-    Widget::operator SDL_Texture *() const
+    Widget::Widget(const Widget *w)
     {
-        return texture;
-    }
-    void Widget::setGeo(const SDL_FRect &geo)
-    {
-        target_geometry = geo;
-    }
-    SDL_FRect Widget::getGeo()
-    {
-        return target_geometry;
-    }
-    bool Widget::LoadFromImage(const std::string_view path, SDL_Renderer *renderer)
-    {
-        bool fail{false};
-        SDL_Surface *loadedSurface{IMG_Load(path.data())};
-
-        if (!loadedSurface)
+        std::cout << "4\n";
+        if (this != w)
         {
-            SDL_Log("CANT CREATE SDL_Surface: %s\n", SDL_GetError());
-            fail = true;
+            geometry = w->geometry;
         }
-        else
-        {
-            if (texture = SDL_CreateTextureFromSurface(renderer, loadedSurface); !texture)
-            {
-                SDL_Log("CANT CRATE SDL_Texture: %s\n", SDL_GetError());
-                fail = true;
-            }
-            target_geometry.w = static_cast<float>(texture->w);
-            target_geometry.h = static_cast<float>(texture->h);
-            SDL_DestroySurface(loadedSurface);
-        }
-        return fail;
     }
-    bool Widget::loadFromTTF(const std::string_view path,
-                             std::string_view text,
-                             SDL_Color text_color,
-                             float ptsize,
-                             SDL_Renderer *renderer)
+    Widget &Widget::operator=(const Widget &w)
     {
-        destroy();
-        bool fail{false};
-
-        TTF_Font *font{TTF_OpenFont(path.data(), ptsize)};
-        if (!font)
+        std::cout << "5\n";
+        if (this != &w)
         {
-            SDL_Log("CANT CREATE FONT %s\n", SDL_GetError());
-            fail = true;
+            geometry = w.geometry;
         }
-        else
-        {
-            SDL_Surface *textSurface{TTF_RenderText_Solid(font, text.data(), 0, text_color)};
-            if (!textSurface)
-            {
-                SDL_Log("CANT CREATE SDL_Surface* textSurface: %s\n", SDL_GetError());
-                fail = true;
-            }
-            else
-            {
-                if (texture = SDL_CreateTextureFromSurface(renderer, textSurface); !texture)
-                {
-                    SDL_Log("CANT CRATE SDL_Texture: %s\n", SDL_GetError());
-                    fail = true;
-                }
-                target_geometry.w = static_cast<float>(texture->w);
-                target_geometry.h = static_cast<float>(texture->h);
-                SDL_DestroySurface(textSurface);
-            }
-            TTF_CloseFont(font);
-            font = nullptr;
-        }
-        return fail;
+        return *this;
     }
-    bool Widget::isPointIn(float mouse_x, float mouse_y)
+    bool Widget::operator==(const Widget &w)
+    {
+        return this == &w;
+    }
+    bool Widget::operator!=(const Widget &w)
+    {
+        return !(this->operator==(w));
+    }
+    Widget::~Widget()
+    {
+        std::cout << "widget ded\n";
+    }
+    void Widget::setGeo(const SDL_FRect &g)
+    {
+        geometry = g;
+    }
+    SDL_FRect Widget::getGeo () const
+    {
+        return geometry;
+    }
+    bool Widget::contains(float mouse_x, float mouse_y)
     {
         if ((mouse_x >= getGeo().x) && (mouse_x <= (getGeo().x + getGeo().w)))
         {
@@ -103,13 +86,5 @@ namespace HGS
         }
 
         return false;
-    }
-    void Widget::destroy()
-    {
-        if (texture)
-        {
-            SDL_DestroyTexture(texture);
-            texture = nullptr;
-        }
     }
 }
