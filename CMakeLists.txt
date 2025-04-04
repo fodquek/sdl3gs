@@ -9,9 +9,8 @@ add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
 
 # Create your game executable target as usual
-add_executable(${PROJ_NAME} main.cpp)
+add_executable(${PROJ_NAME} WIN32 main.cpp)
 target_link_libraries(${PROJ_NAME} PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
-
 set_property(TARGET ${PROJ_NAME} PROPERTY CXX_STANDARD 20)
 set_property(TARGET ${PROJ_NAME} PROPERTY C_STANDARD 11)
 set_property(TARGET ${PROJ_NAME} PROPERTY CXX_EXTENSIONS OFF)
