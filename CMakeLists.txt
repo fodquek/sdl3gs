@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.16)
+set(PROJ_NAME sapong)
+project(${PROJ_NAME} LANGUAGES C CXX)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
+
+# Create your game executable target as usual
+add_executable(${PROJ_NAME} WIN32 main.cpp)
+target_link_libraries(${PROJ_NAME} PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
+
+set_property(TARGET ${PROJ_NAME} PROPERTY CXX_STANDARD 20)
+set_property(TARGET ${PROJ_NAME} PROPERTY C_STANDARD 11)
+set_property(TARGET ${PROJ_NAME} PROPERTY CXX_EXTENSIONS OFF)
+if(MSVC)
+	target_compile_options(${PROJ_NAME} PRIVATE /W4 /WX)
+else()
+	target_compile_options(${PROJ_NAME} PRIVATE -Wall -Wformat-overflow -Wextra -Wpedantic -pedantic-errors -Werror -Wall -Weffc++ -Wconversion -Wsign-conversion)
+endif()
