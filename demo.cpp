@@ -3,108 +3,94 @@
 // #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <sys/types.h>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string_view>
-#include <sys/types.h>
 #include <vector>
 
-#include "ceng.h"
-#include "cwindow.h"
-#include "crenderer.h"
 #include "cbox.h"
+#include "ccircle.h"
+#include "ceng.h"
+#include "crenderer.h"
+#include "cwindow.h"
 
 /**
  * All errors
  */
 namespace HGS
 {
-    enum class RC : int
-    {
-        OK = 0,
-        SDL_ERR_INIT,
-        SDL_ERR_WIN_INIT,
-        SDL_ERR_REN_INIT,
-        SDL_ERR_VSYNC_SET
-    };
-
-    const int VSYNC_ON {1};
-    const int VSYNC_OFF {0};
-}
-
-int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
+enum class RC : int
 {
-    if (!HGS::ENG::init())
-    {
+    OK = 0,
+    SDL_ERR_INIT,
+    SDL_ERR_WIN_INIT,
+    SDL_ERR_REN_INIT,
+    SDL_ERR_VSYNC_SET
+};
+
+const int VSYNC_ON{1};
+const int VSYNC_OFF{0};
+} // namespace HGS
+
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
+{
+    if (!HGS::ENG::init()) {
         std::cerr << "SDL_CANT_INIT\n";
         return static_cast<int>(HGS::RC::SDL_ERR_INIT);
     }
 
-    HGS::Window w {"demo", {600, 480}};
-    HGS::Renderer r {&w};
+    HGS::Window w{"demo", {600, 480}};
+    HGS::Renderer r{&w};
     // renderer clear color?
     HGS::ENG::VSYNC(r, HGS::VSYNC_ON);
 
-    bool main_loop {true};
+    bool main_loop{true};
     SDL_Event e{};
     float mx;
     float my;
-    const SDL_FRect g {50.f, 100.f, 100.f, 200.f};
-    HGS::Widget* box  {new HGS::Box(static_cast<SDL_FRect>(g))};
-    HGS::Widget* box2 {new HGS::Box(static_cast<SDL_FRect>(g))};
-    while (main_loop)
-    {
+    const SDL_FRect g{50.f, 100.f, 100.f, 200.f};
+    HGS::Widget* box{new HGS::Box(static_cast<SDL_FRect>(g))};
+    HGS::Widget* box2{new HGS::Box(static_cast<SDL_FRect>(g))};
+    HGS::Widget* circle{new HGS::Circle(400.f, 400.f, 50.f)};
+    while (main_loop) {
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_EVENT_QUIT)
-            {
+            if (e.type == SDL_EVENT_QUIT) {
                 main_loop = false;
-            }
-            else if (e.type == SDL_EVENT_KEY_UP)
-            {
-                auto k {e.key.key};
-                if (k == SDLK_Q || k == SDLK_ESCAPE)
-                {
+            } else if (e.type == SDL_EVENT_KEY_UP) {
+                auto k{e.key.key};
+                if (k == SDLK_Q || k == SDLK_ESCAPE) {
                     main_loop = false;
                 }
-            }
-            else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
-            {
+            } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 SDL_GetMouseState(&mx, &my);
-                if (box->isContains(mx, my))
-                {
-                    dynamic_cast<HGS::Box*>(box)->setBG(
-                        {0x00, 0x00, 0xff, 0xff}
-                    );
-                }
-                else
-                {
+                if (box->isContains(mx, my)) {
+                    dynamic_cast<HGS::Box*>(box)->setBG({0x00, 0x00, 0xff, 0xff});
+                } else {
                     box->setPos({mx, my});
-                    dynamic_cast<HGS::Box*>(box)->setBG(
-                        {0xff, 0x00, 0x00, 0xff}
-                    );
+                    dynamic_cast<HGS::Box*>(box)->setBG({0xff, 0x00, 0x00, 0xff});
                 }
             }
-            
+
             SDL_SetRenderDrawColor(r, 0x00, 0x00, 0x00, 0xff);
             SDL_RenderClear(r);
-            if (dynamic_cast<HGS::Box*>(box)->getBG().b == 0xff)
-            {
+            if (dynamic_cast<HGS::Box*>(box)->getBG().b == 0xff) {
                 box2->render(r);
                 box->render(r);
-            }
-            else
-            {
+            } else {
                 box->render(r);
                 box2->render(r);
             }
+            circle->render(r);
             SDL_RenderPresent(r);
         }
     }
 
     delete box;
     delete box2;
+    delete circle;
     HGS::ENG::deinit();
     return 0;
 }
@@ -114,8 +100,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 //     using Renderer = HGS::Renderer;
 //     using Widget = HGS::Widget;
 // public:
-//     explicit MainWindow(const std::string_view title, const SDL_Rect& geo, const SDL_Color& color)
-//     : width{ geo.w }, height{ geo.h }, color{ color } {
+//     explicit MainWindow(const std::string_view title, const SDL_Rect& geo, const SDL_Color&
+//     color) : width{ geo.w }, height{ geo.h }, color{ color } {
 //         if (width < 320) {
 //             SDL_Log("MW WIDTH %d!\n", width);
 //         }
@@ -156,8 +142,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 //     }
 
 //     void SetRenderDrawColor(const SDL_Color color) {
-//         SDL_SetRenderDrawColor(*renderer, color.r, color.g, color.b, color.a); // magenta ff00ff
-//         this->color = color;
+//         SDL_SetRenderDrawColor(*renderer, color.r, color.g, color.b,
+//         color.a); // magenta ff00ff this->color = color;
 //     }
 
 //     void SetRenderDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
@@ -251,9 +237,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 //     scenes.at(SCENE_MAIN).at(MAIN_CONFIG)->LoadFromImage("./assets/images/join_btn.png", mw);
 //     scenes.at(SCENE_MAIN).at(MAIN_EXIT)->LoadFromImage("./assets/images/quit_btn.png", mw);
 
-//     scenes.at(SCENE_OFFLINE).at(OFFLINE_PLAYER)->LoadFromImage("./assets/images/player_paddle.png", mw);
-//     scenes.at(SCENE_OFFLINE).at(OFFLINE_AI)->LoadFromImage("./assets/images/ai_paddle.png", mw);
-//     scenes.at(SCENE_OFFLINE).at(OFFLINE_BALL)->LoadFromImage("./assets/images/ball.png", mw);
+//     scenes.at(SCENE_OFFLINE).at(OFFLINE_PLAYER)->LoadFromImage("./assets/images/player_paddle.png",
+//     mw); scenes.at(SCENE_OFFLINE).at(OFFLINE_AI)->LoadFromImage("./assets/images/ai_paddle.png",
+//     mw); scenes.at(SCENE_OFFLINE).at(OFFLINE_BALL)->LoadFromImage("./assets/images/ball.png",
+//     mw);
 
 //     scenes.at(SCENE_EXIT).at(EXIT_LOGO)->LoadFromImage("./assets/images/quit_btn.png", mw);
 //     scenes.at(SCENE_EXIT).at(EXIT_YES)->LoadFromImage("./assets/images/yes_btn.png", mw);
@@ -302,8 +289,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 //                     SDL_FRect next_pos{ w->getGeo() };
 //                     next_pos.y += PLAYER_VEL;
 //                     if (next_pos.y > 720.f -
-//                         static_cast<float>(static_cast<SDL_Texture*>(*w)->h)) {
-//                         next_pos.y = 720.f -
+//                         static_cast<float>(static_cast<SDL_Texture*>(*w)->h))
+//                         { next_pos.y = 720.f -
 //                         static_cast<float>(static_cast<SDL_Texture*>(*w)->h);
 //                     }
 //                     scenes.at(SCENE_OFFLINE).at(OFFLINE_PLAYER)->setGeo(next_pos);
@@ -397,9 +384,10 @@ memcpy, memset olsa güzel olur? 20:42_07.02.2025
 
 /*
 
-herşeyi widget üzerinden yapıyoz ama saçma. nihahi hedef buton label paddle vb. olmalı
-game state i düşnmek lazım, artık diğer pong oyunlarının kodlarını okumak lazım
-widget ın şuanki hali berbat, font we texture lar kendileri bağımsız varlık olmalı VE gerekli widgetlar ile eşleşitiirlmeli
-event handling sahne ve widget bazlı olmalı
+herşeyi widget üzerinden yapıyoz ama saçma. nihahi hedef buton label paddle vb.
+olmalı game state i düşnmek lazım, artık diğer pong oyunlarının kodlarını okumak
+lazım widget ın şuanki hali berbat, font we texture lar kendileri bağımsız
+varlık olmalı VE gerekli widgetlar ile eşleşitiirlmeli event handling sahne ve
+widget bazlı olmalı
 
 */

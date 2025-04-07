@@ -36,9 +36,6 @@
 # clang-tidy output
 /clang-tidy-fixes.patch
 
-# should be user-defined
-.clang-format
-
 # SDL, SDL_image and SDL_ttf source codes in vendored/
 vendored/
 

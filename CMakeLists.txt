@@ -15,8 +15,8 @@ add_executable(demo demo.cpp
                     cwindow.cpp cwindow.h
                     crenderer.cpp crenderer.h
                     cwidget.cpp cwidget.h
-                    cbox.cpp cbox.h)
-                    # ccircle.cpp ccircle.h)
+                    cbox.cpp cbox.h
+                    ccircle.cpp ccircle.h)
 target_link_libraries(demo PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
 set_property(TARGET demo PROPERTY CXX_STANDARD 20)
 set_property(TARGET demo PROPERTY CXX_STANDARD_REQUIRED ON)

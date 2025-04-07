@@ -3,17 +3,17 @@
 #include "cwindow.h"
 namespace HGS
 {
-    class Renderer
-    {
-    public:
-        Renderer(Window *w);
-        ~Renderer();
-        Renderer(const Renderer &r) = delete;
-        Renderer operator=(const Renderer &r) = delete;
-        operator SDL_Renderer *();
+class Renderer
+{
+public:
+    Renderer(Window* w);
+    ~Renderer();
+    Renderer(const Renderer& r) = delete;
+    Renderer operator=(const Renderer& r) = delete;
+    operator SDL_Renderer*();
 
-    private:
-        SDL_Renderer *sdl_renderer;
-    };
-}
+private:
+    SDL_Renderer* sdl_renderer;
+};
+} // namespace HGS
 #endif
