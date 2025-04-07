@@ -13,7 +13,7 @@ namespace HGS
 
     bool ENG::VSYNC(SDL_Renderer* r, int v)
     {
-        if (!SDL_SetRenderVSync(r, 1)) {
+        if (!SDL_SetRenderVSync(r, v)) {
             SDL_Log("VSYNC_SET_ERROR: %s", SDL_GetError());
             return false;
         }

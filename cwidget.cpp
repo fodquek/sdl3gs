@@ -1,22 +1,10 @@
 #include "cwidget.h"
 #include <iostream>
 
-namespace std
-{
-    std::ostream &operator<<(std::ostream &os, const HGS::Widget &w)
-    {
-        const auto &fr{w.getGeo()};
-        return os << "[x: " << fr.x
-                  << ", y: " << fr.y
-                  << ", w: " << fr.w
-                  << ", h: " << fr.h
-                  << "]\n";
-    }
-}
-
 namespace HGS
 {
-    Widget::Widget(const SDL_FRect &g) : geometry{g} {}
+    Widget::Widget(const float x, const float y) : pos{x, y} {}
+    Widget::Widget(const SDL_FPoint &p) : pos{p} {}
     bool Widget::operator==(const Widget &w)
     {
         return this == &w;
@@ -25,36 +13,17 @@ namespace HGS
     {
         return !(this->operator==(w));
     }
-    bool Widget::isContains(float mouse_x, float mouse_y)
-    {
-        if ((mouse_x >= getGeo().x) && (mouse_x <= (getGeo().x + getGeo().w)))
-        {
-            if ((mouse_y >= getGeo().y) && (mouse_y <= (getGeo().y + getGeo().h)))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-    SDL_FRect Widget::getGeo() const
-    {
-        return geometry;
-    }
-    void Widget::setGeo(const SDL_FRect &g)
-    {
-        geometry = g;
-    }
     SDL_FPoint Widget::getPos() const
     {
-        return {getGeo().x, getGeo().y};
+        return pos;
+    }
+    void Widget::setPos(const float x, const float y)
+    {
+        pos = {x, y};
     }
     void Widget::setPos(const SDL_FPoint &p)
     {
-        auto g {getGeo()};
-        g.x = p.x - (g.w / 2.f);
-        g.y = p.y - (g.h / 2.f);
-        setGeo(g);
+        pos = p;
     }
     
 
