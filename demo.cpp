@@ -52,7 +52,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     float mx;
     float my;
     const SDL_FRect g {50.f, 100.f, 100.f, 200.f};
-    HGS::Widget* box = new HGS::Box(static_cast<SDL_FRect>(g));
+    HGS::Widget* box  {new HGS::Box(static_cast<SDL_FRect>(g))};
+    HGS::Widget* box2 {new HGS::Box(static_cast<SDL_FRect>(g))};
     while (main_loop)
     {
         while (SDL_PollEvent(&e)) {
@@ -88,12 +89,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             
             SDL_SetRenderDrawColor(r, 0x00, 0x00, 0x00, 0xff);
             SDL_RenderClear(r);
-            box->render(r);
+            if (dynamic_cast<HGS::Box*>(box)->getBG().b == 0xff)
+            {
+                box2->render(r);
+                box->render(r);
+            }
+            else
+            {
+                box->render(r);
+                box2->render(r);
+            }
             SDL_RenderPresent(r);
         }
     }
 
     delete box;
+    delete box2;
     HGS::ENG::deinit();
     return 0;
 }
