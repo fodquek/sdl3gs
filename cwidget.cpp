@@ -16,7 +16,6 @@ namespace std
 
 namespace HGS
 {
-    Widget::Widget(float x, float y, float w, float h) : geometry{x, y, w, h} {}
     Widget::Widget(const SDL_FRect &g) : geometry{g} {}
     bool Widget::operator==(const Widget &w)
     {
@@ -34,7 +33,7 @@ namespace HGS
     {
         return geometry;
     }
-    bool Widget::contains(float mouse_x, float mouse_y)
+    bool Widget::isContains(float mouse_x, float mouse_y)
     {
         if ((mouse_x >= getGeo().x) && (mouse_x <= (getGeo().x + getGeo().w)))
         {

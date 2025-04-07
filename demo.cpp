@@ -1,6 +1,6 @@
 // /* Headers */
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
+// #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <cstddef>
@@ -11,48 +11,89 @@
 #include <sys/types.h>
 #include <vector>
 
+#include "ceng.h"
 #include "cwindow.h"
 #include "crenderer.h"
-#include "cwidget.h"
+#include "cbox.h"
 
-class Kek : public HGS::Widget
+/**
+ * All errors
+ */
+namespace HGS
 {
-public:
-    Kek() : Widget{-1.f, 1.f, -1.f, 1.f} { std::cout << "k1\n"; }
-    Kek(const SDL_FRect g) : Widget(g) { std::cout << "k2\n"; }
-    Kek(float x, float y, float w, float h) : Widget(x, y, w, h) { std::cout << "ke\n"; };
-    ~Kek()
+    enum class RC : int
     {
-    }
-    bool contains(float mx, float my) override
-    {
-        return false;
-    }
-};
+        OK = 0,
+        SDL_ERR_INIT,
+        SDL_ERR_WIN_INIT,
+        SDL_ERR_REN_INIT,
+        SDL_ERR_VSYNC_SET
+    };
+
+    const int VSYNC_ON {1};
+    const int VSYNC_OFF {0};
+}
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 {
-    std::cout << "######################  0  ########################\n";
-    HGS::Widget *kek = new Kek({1.f, 2.f, 3.f, 4.f});
-    std::cout << "######################  1  ########################\n";
-    HGS::Widget &kek2{*kek};
-    std::cout << "######################  2  ########################\n";
-    Kek kekreal;
-    std::cout << "######################  3  ########################\n";
-    Kek lekek{2.f, 3.f, 2.f, 5678.f};
-    std::cout << "######################  4  ########################\n";
-    Kek limon = lekek;
-    std::cout << "######################  5  ########################\n";
-    limon = limon;
-    std::cout << std::boolalpha << (limon == limon) << "\n";
-    std::cout << (limon != limon) << "\n";
-    std::cout << "######################  6  ########################\n";
-    kekreal = limon;
-    std::cout << "######################  7  ########################\n";
-    std::cout << limon << "\n";
-    std::cout << "######################  8  ########################\n";
-    delete kek;
-    std::cout << "######################  9  ########################\n";
+    if (!HGS::ENG::init())
+    {
+        std::cerr << "SDL_CANT_INIT\n";
+        return static_cast<int>(HGS::RC::SDL_ERR_INIT);
+    }
+
+    HGS::Window w {"demo", {600, 480}};
+    HGS::Renderer r {&w};
+    // renderer clear color?
+    HGS::ENG::VSYNC(r, HGS::VSYNC_ON);
+
+    bool main_loop {true};
+    SDL_Event e{};
+    float mx;
+    float my;
+    const SDL_FRect g {50.f, 100.f, 100.f, 200.f};
+    HGS::Widget* box = new HGS::Box(static_cast<SDL_FRect>(g));
+    while (main_loop)
+    {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_EVENT_QUIT)
+            {
+                main_loop = false;
+            }
+            else if (e.type == SDL_EVENT_KEY_UP)
+            {
+                auto k {e.key.key};
+                if (k == SDLK_Q || k == SDLK_ESCAPE)
+                {
+                    main_loop = false;
+                }
+            }
+            else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+            {
+                SDL_GetMouseState(&mx, &my);
+                if (box->isContains(mx, my))
+                {
+                    dynamic_cast<HGS::Box*>(box)->setBG(
+                        {0x00, 0x00, 0xff, 0xff}
+                    );
+                }
+                else
+                {
+                    dynamic_cast<HGS::Box*>(box)->setBG(
+                        {0xff, 0x00, 0x00, 0xff}
+                    );
+                }
+            }
+            
+            SDL_SetRenderDrawColor(r, 0x00, 0x00, 0x00, 0xff);
+            SDL_RenderClear(r);
+            box->render(r);
+            SDL_RenderPresent(r);
+        }
+    }
+
+    delete box;
+    HGS::ENG::deinit();
     return 0;
 }
 

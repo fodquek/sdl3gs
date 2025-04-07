@@ -9,15 +9,16 @@ namespace HGS
     {
     public:
         Widget() = default;
-        Widget(float x, float y, float w, float h);
         Widget(const SDL_FRect &g);
+        virtual ~Widget() = default;
         bool operator==(const Widget &w);
         bool operator!=(const Widget &w);
-        virtual ~Widget() = default;
+        virtual bool isContains(float mouse_x, float mouse_y);
+
+        virtual void render(SDL_Renderer* r) = 0;
 
         SDL_FRect getGeo () const;
         void setGeo(const SDL_FRect &geo);
-        virtual bool contains(float mouse_x, float mouse_y) = 0;
 
     private:
         SDL_FRect geometry{};
