@@ -25,14 +25,6 @@ namespace HGS
     {
         return !(this->operator==(w));
     }
-    void Widget::setGeo(const SDL_FRect &g)
-    {
-        geometry = g;
-    }
-    SDL_FRect Widget::getGeo() const
-    {
-        return geometry;
-    }
     bool Widget::isContains(float mouse_x, float mouse_y)
     {
         if ((mouse_x >= getGeo().x) && (mouse_x <= (getGeo().x + getGeo().w)))
@@ -45,4 +37,25 @@ namespace HGS
 
         return false;
     }
+    SDL_FRect Widget::getGeo() const
+    {
+        return geometry;
+    }
+    void Widget::setGeo(const SDL_FRect &g)
+    {
+        geometry = g;
+    }
+    SDL_FPoint Widget::getPos() const
+    {
+        return {getGeo().x, getGeo().y};
+    }
+    void Widget::setPos(const SDL_FPoint &p)
+    {
+        auto g {getGeo()};
+        g.x = p.x - (g.w / 2.f);
+        g.y = p.y - (g.h / 2.f);
+        setGeo(g);
+    }
+    
+
 }

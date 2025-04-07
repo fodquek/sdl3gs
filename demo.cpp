@@ -79,6 +79,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                 }
                 else
                 {
+                    box->setPos({mx, my});
                     dynamic_cast<HGS::Box*>(box)->setBG(
                         {0xff, 0x00, 0x00, 0xff}
                     );

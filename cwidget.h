@@ -20,6 +20,9 @@ namespace HGS
         SDL_FRect getGeo () const;
         void setGeo(const SDL_FRect &geo);
 
+        SDL_FPoint getPos() const;
+        void setPos(const SDL_FPoint &pos);
+
     private:
         SDL_FRect geometry{};
     };
