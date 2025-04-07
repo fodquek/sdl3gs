@@ -5,7 +5,7 @@ namespace HGS
     Box::Box(const SDL_FRect& g) : Widget(g.x, g.y), wh {g.w, g.h} {}
     Box::Box(const SDL_FRect& g, const SDL_Color& c) : Widget(g.x, g.y), wh {g.w, g.h}, bg{c} {}
 
-    bool Box::isContains(float mx, float my)
+    bool Box::isContains(float mx, float my) const
     {
         const auto [x, y] {getPos()};
         const auto [w, h] {getWH()};
@@ -20,7 +20,7 @@ namespace HGS
         return false;
     }
 
-    void Box::render(SDL_Renderer* r)
+    void Box::render(SDL_Renderer* r) const
     {
         const auto [x, y] {getPos()};
         const SDL_FRect g {x, y,  wh.x, wh.y};

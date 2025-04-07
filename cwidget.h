@@ -11,11 +11,11 @@ namespace HGS
         explicit Widget(const float x, const float y);
         explicit Widget(const SDL_FPoint &p);
         virtual ~Widget() = default;
-        bool operator==(const Widget &w);
-        bool operator!=(const Widget &w);
+        bool operator==(const Widget &w) const;
+        bool operator!=(const Widget &w) const;
 
-        virtual bool isContains(float mx, float my) = 0;
-        virtual void render(SDL_Renderer* r) = 0;
+        virtual bool isContains(float mx, float my) const = 0;
+        virtual void render(SDL_Renderer* r) const = 0;
 
         SDL_FPoint getPos() const;
         void setPos(const float x, const float y);
