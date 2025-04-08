@@ -25,6 +25,7 @@ RC ENG::VSYNC(SDL_Renderer* r, VSYNC_MODE v)
 
 void ENG::deinit()
 {
+    TTF_Quit();
     SDL_Quit();
 }
 } // namespace HGS
