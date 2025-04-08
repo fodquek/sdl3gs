@@ -17,35 +17,19 @@
 #include "crenderer.h"
 #include "cwindow.h"
 
-/**
- * All errors
- */
-namespace HGS
-{
-enum class RC : int
-{
-    OK = 0,
-    SDL_ERR_INIT,
-    SDL_ERR_WIN_INIT,
-    SDL_ERR_REN_INIT,
-    SDL_ERR_VSYNC_SET
-};
-
-const int VSYNC_ON{1};
-const int VSYNC_OFF{0};
-} // namespace HGS
-
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-    if (!HGS::ENG::init()) {
+    if (const auto rc{HGS::ENG::init()}; rc != HGS::RC::OK) {
         std::cerr << "SDL_CANT_INIT\n";
-        return static_cast<int>(HGS::RC::SDL_ERR_INIT);
+        return static_cast<int>(rc);
     }
-
     HGS::Window w{"demo", {600, 480}};
     HGS::Renderer r{&w};
-    // renderer clear color?
-    HGS::ENG::VSYNC(r, HGS::VSYNC_ON);
+    if (const auto rc{HGS::ENG::VSYNC(r, HGS::VSYNC_MODE::ON)}; rc != HGS::RC::OK) {
+        std::cerr << "SDL_VSYNC_SET_ERR\n";
+        HGS::ENG::deinit();
+        return static_cast<int>(rc);
+    }
 
     bool main_loop{true};
     SDL_Event e{};
@@ -55,6 +39,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     HGS::Widget* box{new HGS::Box(static_cast<SDL_FRect>(g))};
     HGS::Widget* box2{new HGS::Box(static_cast<SDL_FRect>(g))};
     HGS::Widget* circle{new HGS::Circle(400.f, 400.f, 50.f)};
+
     while (main_loop) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_EVENT_QUIT) {
