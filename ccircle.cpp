@@ -1,12 +1,6 @@
 #include "ccircle.h"
 namespace HGS
 {
-Circle::Circle(const float x, const float y, const float r) : Widget(x, y), radius(r) {}
-Circle::Circle(const float x, const float y, const float r, const SDL_Color& c)
-    : Widget(x, y), radius(r), bg(c)
-{
-}
-
 bool Circle::isContains(const float mx, const float my) const
 {
     const auto [x, y]{getPos()};
@@ -64,5 +58,13 @@ float Circle::getRadius() const
 void Circle::setRadius(const float r)
 {
     radius = r;
+}
+SDL_Color Circle::getBG() const
+{
+    return bg;
+}
+void Circle::setBG(const SDL_Color& c)
+{
+    bg = c;
 }
 } // namespace HGS

@@ -11,11 +11,38 @@
 #include <string_view>
 #include <vector>
 
-#include "cbox.h"
-#include "ccircle.h"
 #include "ceng.h"
 #include "crenderer.h"
 #include "cwindow.h"
+#include "cbox.h"
+#include "ccircle.h"
+#include "cfont.h"
+
+
+void BoxFactory(HGS::Box& box, const SDL_FRect& g, const SDL_Color& bg)
+{
+    box.setBG(bg);
+    box.setPos({g.x, g.y});
+    box.setWH({g.w, g.h});
+}
+
+void CircleFactory(HGS::Circle& circle, const SDL_FPoint& p, const float r, const SDL_Color bg)
+{
+    circle.setPos(p);
+    circle.setRadius(r);
+    circle.setBG(bg);
+}
+
+void FontFactory(HGS::Font& font, const SDL_FRect& g, const std::string_view text, const std::string_view file, const float ptsize, const SDL_Color& bg, const SDL_Color& c)
+{
+    font.setPos({g.x, g.y});
+    font.setWH({g.w, g.h});
+    font.setText(text);
+    font.setPtSize(ptsize);
+    font.setBG(bg);
+    font.setColor(c);
+    font.makeFont(file);
+}
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -35,11 +62,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     SDL_Event e{};
     float mx;
     float my;
-    const SDL_FRect g{50.f, 100.f, 100.f, 200.f};
-    HGS::Widget* box{new HGS::Box(static_cast<SDL_FRect>(g))};
-    HGS::Widget* box2{new HGS::Box(static_cast<SDL_FRect>(g))};
-    HGS::Widget* circle{new HGS::Circle(400.f, 400.f, 50.f)};
-
+    HGS::Widget* box = new HGS::Box;
+    BoxFactory(dynamic_cast<HGS::Box&>(*box), {10.f, 20.f, 100.f, 100.f}, {0xff, 0x00, 0xff, 0xff});
+    HGS::Widget* box2 = new HGS::Box;
+    BoxFactory(dynamic_cast<HGS::Box&>(*box2), {300.f, 100.f, 42.f, 300.f}, {0xff, 0xff, 0xff, 0xff});
+    HGS::Widget* circle = new HGS::Circle;
+    CircleFactory(dynamic_cast<HGS::Circle&>(*circle), {150.f, 20.f}, 49.f, {0xff, 0x00, 0x00, 0xff});
+    HGS::Widget* font = new HGS::Font;
+    FontFactory(dynamic_cast<HGS::Font&>(*font), {0.f, 0.f, 640.f, 480.f}, "Demo!", "./assets/fonts/OpenSans-Regular.ttf", 120.f, {0x42, 0x42, 0x42, 0x00}, {0xff, 0x88, 0x00, 0xff});
     while (main_loop) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_EVENT_QUIT) {
@@ -61,6 +91,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
             SDL_SetRenderDrawColor(r, 0x00, 0x00, 0x00, 0xff);
             SDL_RenderClear(r);
+            font->render(r);
+            box->render(r);
             if (dynamic_cast<HGS::Box*>(box)->getBG().b == 0xff) {
                 box2->render(r);
                 box->render(r);
@@ -76,6 +108,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     delete box;
     delete box2;
     delete circle;
+    delete font;
+
     HGS::ENG::deinit();
     return 0;
 }

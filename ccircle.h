@@ -9,8 +9,6 @@ class Circle : public Widget
 {
 public:
     Circle() = default;
-    explicit Circle(const float x, const float y, const float r);
-    explicit Circle(const float x, const float y, const float r, const SDL_Color& c);
     ~Circle() = default;
 
     bool isContains(float mx, float my) const override;
@@ -19,8 +17,11 @@ public:
     float getRadius() const;
     void setRadius(const float r);
 
+    SDL_Color getBG() const;
+    void setBG(const SDL_Color& c);
+
 private:
-    float radius{};
+    float radius{10.f};
     SDL_Color bg{0xff, 0xff, 0x00, 0xff};
 };
 } // namespace HGS

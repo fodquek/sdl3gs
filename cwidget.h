@@ -8,8 +8,6 @@ class Widget
 {
 public:
     Widget() = default;
-    explicit Widget(const float x, const float y);
-    explicit Widget(const SDL_FPoint& p);
     virtual ~Widget() = default;
     bool operator==(const Widget& w) const;
     bool operator!=(const Widget& w) const;
@@ -25,10 +23,4 @@ private:
     SDL_FPoint pos{10.f, 10.f};
 };
 } // namespace HGS
-
-namespace std
-{
-std::ostream& operator<<(std::ostream& os, const HGS::Widget& w);
-}
-
 #endif
