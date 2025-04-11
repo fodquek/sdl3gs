@@ -3,6 +3,10 @@
 
 namespace HGS
 {
+Widget::~Widget()
+{
+    SDL_Log("~WIDGET\n\n");
+}
 bool Widget::operator==(const Widget& w) const
 {
     return this == &w;

@@ -8,7 +8,7 @@ class Widget
 {
 public:
     Widget() = default;
-    virtual ~Widget() = default;
+    virtual ~Widget();
     bool operator==(const Widget& w) const;
     bool operator!=(const Widget& w) const;
 

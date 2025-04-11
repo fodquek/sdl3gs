@@ -1,6 +1,10 @@
 #include "cbox.h"
 namespace HGS
 {
+Box::~Box()
+{
+    SDL_Log("~BOX\n");
+}
 bool Box::isContains(float mx, float my) const
 {
     const auto [x, y]{getPos()};

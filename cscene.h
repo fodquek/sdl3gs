@@ -14,7 +14,7 @@ namespace HGS
             void render(SDL_Renderer* r) const;
             void clear();
         private:
-            std::vector<Widget*> widgets {};
+            std::vector<std::unique_ptr<Widget>> widgets {};
     };
 }
 #endif

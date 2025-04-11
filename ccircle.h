@@ -9,7 +9,7 @@ class Circle : public Widget
 {
 public:
     Circle() = default;
-    ~Circle() = default;
+    ~Circle();
 
     bool isContains(float mx, float my) const override;
     void render(SDL_Renderer* r) const override;

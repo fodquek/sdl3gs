@@ -4,24 +4,22 @@ namespace HGS
     Scene::~Scene()
     {
         clear();
+        SDL_Log("SCENE GONE\n");
     }
     void Scene::add(Widget* w)
     {
-        widgets.push_back(w);
+        std::unique_ptr<Widget> up_w(w);
+        widgets.push_back(std::move(up_w));
     }
     void Scene::render(SDL_Renderer* r) const
     {
-        for(const auto* w : widgets)
+        for(size_t i {0}; i < widgets.size(); ++i)
         {
-            w->render(r);
+            widgets.at(i).get()->render(r);
         }
     }
     void Scene::clear()
     {
-        for(const auto* w : widgets)
-        {
-            delete w;
-        }
-        SDL_Log("SCENE GONE\n");
+        widgets.clear();
     }
 }

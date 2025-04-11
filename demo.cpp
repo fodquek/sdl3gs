@@ -82,7 +82,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     demoScene.add(box);
     demoScene.add(box2);
     demoScene.add(circle);
-
+    SDL_Log("\n\n==== MAIN LOOP ===\n\n");
     while (main_loop) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_EVENT_QUIT) {
@@ -108,12 +108,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
             SDL_RenderPresent(r);
         }
     }
-
-    // delete box;
-    // delete box2;
-    // delete circle;
-    // delete font;
-
+    demoScene.clear();
     HGS::ENG::deinit();
     return 0;
 }

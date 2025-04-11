@@ -3,11 +3,8 @@ namespace HGS
 {
 Font::~Font()
 {
-    if (font) {
-        TTF_CloseFont(font);
-        font = nullptr;
-    }
-    SDL_Log("FONT GONE\n");
+    clearAllocation();
+    SDL_Log("~Font\n");
 }
 
 void Font::render(SDL_Renderer* r) const
@@ -23,9 +20,8 @@ void Font::render(SDL_Renderer* r) const
     }
     SDL_DestroySurface(surface);
     const auto p {getPos()};
-    const auto wh {getWH()};
-    const SDL_FRect dst{p.x, p.y, wh.x, wh.y};
-    // const SDL_FRect dst{300.f, 300.f, 100.f, 200.f};
+    const auto sizes {getWH()};
+    const SDL_FRect dst{p.x, p.y, sizes.x, sizes.y};
     SDL_RenderTexture(r, texture, nullptr, &dst);
     SDL_DestroyTexture(texture);
 }

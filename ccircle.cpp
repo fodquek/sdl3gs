@@ -1,6 +1,10 @@
 #include "ccircle.h"
 namespace HGS
 {
+Circle::~Circle()
+{
+    SDL_Log("~Circle\n");
+}
 bool Circle::isContains(const float mx, const float my) const
 {
     const auto [x, y]{getPos()};

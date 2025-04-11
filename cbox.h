@@ -7,7 +7,7 @@ class Box : public Widget
 {
 public:
     Box() = default;
-    ~Box() = default;
+    ~Box();
 
     bool isContains(float mx, float my) const override;
     void render(SDL_Renderer* r) const override;
