@@ -18,6 +18,10 @@ namespace HGS
     }
     void Scene::clear()
     {
-        widgets.clear();
+        for(const auto* w : widgets)
+        {
+            delete w;
+        }
+        SDL_Log("SCENE GONE\n");
     }
 }

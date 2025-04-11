@@ -7,6 +7,7 @@ Font::~Font()
         TTF_CloseFont(font);
         font = nullptr;
     }
+    SDL_Log("FONT GONE\n");
 }
 
 void Font::render(SDL_Renderer* r) const
