@@ -2,6 +2,7 @@
 #define HGS_CIRCLE
 #include "cwidget.h"
 #include <iostream>
+#include <math.h>
 
 namespace HGS
 {
