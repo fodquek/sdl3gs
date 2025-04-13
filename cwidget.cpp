@@ -15,6 +15,14 @@ bool Widget::operator!=(const Widget& w) const
 {
     return !(this->operator==(w));
 }
+void Widget::setCallBack(std::function<void()> cb)
+{
+    callback = cb;
+}
+void Widget::call2back()
+{
+    callback();
+}
 SDL_FPoint Widget::getPos() const
 {
     return pos;

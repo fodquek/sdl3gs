@@ -11,10 +11,11 @@ namespace HGS
             Scene() = default;
             ~Scene();
             void add(Widget* w);
+            Widget* get(size_t i) const;
             void render(SDL_Renderer* r) const;
             void clear();
         private:
-            std::vector<std::unique_ptr<Widget>> widgets {};
+            std::vector<Widget*> widgets {};
     };
 }
 #endif
