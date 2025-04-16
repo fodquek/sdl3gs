@@ -48,4 +48,12 @@ void Box::setBG(const SDL_Color& c)
     bg = c;
 }
 
+Widget* BoxFactory(Box* box, const SDL_FRect& g, const SDL_Color& bg)
+{
+    box->setBG(bg);
+    box->setPos({g.x, g.y});
+    box->setWH({g.w, g.h});
+    return box;
+}
+
 } // namespace HGS

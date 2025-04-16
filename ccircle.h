@@ -25,5 +25,7 @@ private:
     float radius{10.f};
     SDL_Color bg{0xff, 0xff, 0x00, 0xff};
 };
+
+Widget* CircleFactory(Circle* circle, const SDL_FPoint& p, const float r, const SDL_Color& bg);
 } // namespace HGS
 #endif

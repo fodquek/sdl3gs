@@ -71,4 +71,13 @@ void Circle::setBG(const SDL_Color& c)
 {
     bg = c;
 }
+
+Widget* CircleFactory(Circle* circle, const SDL_FPoint& p, const float r, const SDL_Color& bg)
+{
+    circle->setPos(p);
+    circle->setRadius(r);
+    circle->setBG(bg);
+    return circle;
+}
+
 } // namespace HGS

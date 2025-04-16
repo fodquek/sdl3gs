@@ -22,5 +22,9 @@ private:
     SDL_FPoint wh{100.f, 1.f};
     SDL_Color bg{0x00, 0x00, 0x00, 0x00};
 };
+
+
+Widget* BoxFactory(Box* box, const SDL_FRect& g, const SDL_Color& bg);
+
 } // namespace HGS
 #endif

@@ -14,10 +14,11 @@ add_executable(demo demo.cpp
                     ceng.cpp ceng.h
                     cwindow.cpp cwindow.h
                     crenderer.cpp crenderer.h
+                    cfont.cpp cfont.h
                     cwidget.cpp cwidget.h
                     cbox.cpp cbox.h
+                    clabel.cpp clabel.h
                     ccircle.cpp ccircle.h
-                    cfont.cpp cfont.h
                     cscene.cpp cscene.h)
 target_link_libraries(demo PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
 set_property(TARGET demo PROPERTY CXX_STANDARD 20)
