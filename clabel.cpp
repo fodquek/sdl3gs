@@ -3,14 +3,13 @@ namespace HGS
 {
 Label::~Label()
 {
-    clearAllocation();
     SDL_Log("~Label\n");
 }
 
 void Label::render(SDL_Renderer* r) const
 {
     Box::render(r);
-    SDL_Surface* surface{TTF_RenderText_Solid(font, text.data(), 0, color)};
+    SDL_Surface* surface{TTF_RenderText_Solid(font, text.data(), 0, fc)};
     if (!surface) {
         SDL_Log("CANT CREATE SURFACE@Label::RENDER\n");
     }
@@ -26,17 +25,6 @@ void Label::render(SDL_Renderer* r) const
     SDL_DestroyTexture(texture);
 }
 
-bool Label::makeFont(const std::string_view file)
-{
-    clearAllocation();
-    font = TTF_OpenFont(file.data(), ptsize);
-    if (!font) {
-        SDL_Log("CANT CRATE Label@Label::makeLabel()\n");
-        return false;
-    }
-    return true;
-}
-
 std::string_view Label::getText() const
 {
     return text;
@@ -47,48 +35,36 @@ void Label::setText(const std::string_view t)
     text = t;
 }
 
-float Label::getPtSize() const
+bool Label::testFont() const
 {
-    return ptsize;
+    return font;
 }
 
-void Label::setPtSize(const float pt)
+void Label::setFont(TTF_Font* f) 
 {
-    ptsize = pt;
+    font = f;
 }
 
-SDL_Color Label::getColor() const
+SDL_Color Label::getFC() const
 {
-    return color;
+    return fc;
 }
 
-void Label::setColor(const SDL_Color& c)
+void Label::setFC(const SDL_Color& c)
 {
-    color = c;
+    fc = c;
 }
 
-bool Label::clearAllocation()
+Widget* LabelFactory(Label* label, const SDL_FRect& g, const std::string_view text, TTF_Font* font,
+    const SDL_Color& bg, const SDL_Color& fc)
 {
-    if (font) {
-        TTF_CloseFont(font);
-        font = nullptr;
-        return true;
-    }
-    return false;
-}
-
-Widget* LabelFactory(Label* Label, const SDL_FRect& g, const std::string_view text,
-                    const std::string_view file, const float ptsize, const SDL_Color& bg,
-                    const SDL_Color& c)
-{
-    Label->setPos({g.x, g.y});
-    Label->setWH({g.w, g.h});
-    Label->setText(text);
-    Label->setPtSize(ptsize);
-    Label->setBG(bg);
-    Label->setColor(c);
-    Label->makeFont(file);
-    return Label;
+    label->setPos({g.x, g.y});
+    label->setWH({g.w, g.h});
+    label->setText(text);
+    label->setFont(font);
+    label->setBG(bg);
+    label->setFC(fc);
+    return label;
 }
 
 } // namespace HGS

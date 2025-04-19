@@ -21,10 +21,12 @@
 #include "cscene.h"
 
 constexpr std::string_view FONT_FILE{"./assets/fonts/OpenSans-Regular.ttf"};
+HGS::Font* defont {nullptr};
+
 void fillDemoScene(HGS::Scene& demoScene)
 {
     demoScene.clear();
-    demoScene.add(LabelFactory(new HGS::Label, {0.f, 0.f, 640.f, 480.f}, "Demo!", FONT_FILE, 120.f,
+    demoScene.add(LabelFactory(new HGS::Label, {0.f, 0.f, 640.f, 480.f}, "Demo!", *defont,
                               {0xff, 0xff, 0xff, 0x00}, {0xff, 0x88, 0x00, 0xff}));
     demoScene.add(BoxFactory(new HGS::Box, {10.f, 20.f, 100.f, 100.f}, {0xff, 0x00, 0xff, 0xff}));
     demoScene.add(BoxFactory(new HGS::Box, {300.f, 100.f, 42.f, 300.f}, {0xff, 0xff, 0xff, 127}));
@@ -42,6 +44,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         std::cerr << "SDL_CANT_INIT\n";
         return static_cast<int>(rc);
     }
+    defont = new HGS::Font(FONT_FILE);
     HGS::Window w{"demo", {640, 480}};
     HGS::Renderer r{&w};
     if (const auto rc{HGS::ENG::VSYNC(r, HGS::VSYNC_MODE::ON)}; rc != HGS::RC::OK) {
@@ -57,9 +60,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     bool mainMenuActive{true};
 
     HGS::Scene mainMenu;
-    mainMenu.add(LabelFactory(new HGS::Label, {100.f, 200.f, 150.f, 75.f}, "PLAY", FONT_FILE, 120.f,
+    mainMenu.add(LabelFactory(new HGS::Label, {100.f, 200.f, 150.f, 75.f}, "PLAY", *defont,
                              {0x00, 0x00, 0xff, 0xff}, {0xff, 0x88, 0x00, 0xff}));
-    mainMenu.add(LabelFactory(new HGS::Label, {400.f, 200.f, 150.f, 75.f}, "EXIT", FONT_FILE, 120.f,
+    mainMenu.add(LabelFactory(new HGS::Label, {400.f, 200.f, 150.f, 75.f}, "EXIT", *defont,
                              {0xff, 0x88, 0x00, 0xff}, {0x00, 0x00, 0xff, 0xff}));
     HGS::Widget* btn{mainMenu.get(0)};
     HGS::Widget* ext{mainMenu.get(1)};
