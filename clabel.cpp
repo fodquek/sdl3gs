@@ -55,9 +55,10 @@ void Label::setFC(const SDL_Color& c)
     fc = c;
 }
 
-Widget* LabelFactory(Label* label, const SDL_FRect& g, const std::string_view text, TTF_Font* font,
+Widget* LabelFactory(const SDL_FRect& g, const std::string_view text, TTF_Font* font,
     const SDL_Color& bg, const SDL_Color& fc)
 {
+    Label* label {new Label};
     label->setPos({g.x, g.y});
     label->setWH({g.w, g.h});
     label->setText(text);

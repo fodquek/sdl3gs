@@ -72,8 +72,9 @@ void Circle::setBG(const SDL_Color& c)
     bg = c;
 }
 
-Widget* CircleFactory(Circle* circle, const SDL_FPoint& p, const float r, const SDL_Color& bg)
+Widget* CircleFactory(const SDL_FPoint& p, const float r, const SDL_Color& bg)
 {
+    Circle* circle {new Circle};
     circle->setPos(p);
     circle->setRadius(r);
     circle->setBG(bg);

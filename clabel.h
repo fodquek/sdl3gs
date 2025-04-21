@@ -28,7 +28,7 @@ private:
     SDL_Color fc{0xff, 0xff, 0x00, 0xff};
 };
 
-Widget* LabelFactory(Label* label, const SDL_FRect& g, const std::string_view text, TTF_Font* font,
+Widget* LabelFactory(const SDL_FRect& g, const std::string_view text, TTF_Font* font,
                      const SDL_Color& bg, const SDL_Color& fc);
 } // namespace HGS
 #endif

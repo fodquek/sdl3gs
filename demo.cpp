@@ -21,17 +21,16 @@
 #include "cscene.h"
 
 constexpr std::string_view FONT_FILE{"./assets/fonts/OpenSans-Regular.ttf"};
-HGS::Font* defont {nullptr};
+HGS::Font* defont{nullptr};
 
 void fillDemoScene(HGS::Scene& demoScene)
 {
     demoScene.clear();
-    demoScene.add(LabelFactory(new HGS::Label, {0.f, 0.f, 640.f, 480.f}, "Demo!", *defont,
-                              {0xff, 0xff, 0xff, 0x00}, {0xff, 0x88, 0x00, 0xff}));
-    demoScene.add(BoxFactory(new HGS::Box, {10.f, 20.f, 100.f, 100.f}, {0xff, 0x00, 0xff, 0xff}));
-    demoScene.add(BoxFactory(new HGS::Box, {300.f, 100.f, 42.f, 300.f}, {0xff, 0xff, 0xff, 127}));
-    demoScene.add(CircleFactory(new HGS::Circle, {150.f, 20.f}, 49.f, {0xff, 0x00, 0x00, 0xff}));
-
+    demoScene.add(HGS::LabelFactory({0.f, 0.f, 640.f, 480.f}, "Demo!", *defont, {0xff, 0xff, 0xff, 0x00},
+                               {0xff, 0x88, 0x00, 0xff}));
+    demoScene.add(HGS::BoxFactory({10.f, 20.f, 100.f, 100.f}, {0xff, 0x00, 0xff, 0xff}));
+    demoScene.add(HGS::BoxFactory({300.f, 100.f, 42.f, 300.f}, {0xff, 0xff, 0xff, 127}));
+    demoScene.add(HGS::CircleFactory({150.f, 20.f}, 49.f, {0xff, 0x00, 0x00, 0xff}));
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
@@ -60,10 +59,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     bool mainMenuActive{true};
 
     HGS::Scene mainMenu;
-    mainMenu.add(LabelFactory(new HGS::Label, {100.f, 200.f, 150.f, 75.f}, "PLAY", *defont,
-                             {0x00, 0x00, 0xff, 0xff}, {0xff, 0x88, 0x00, 0xff}));
-    mainMenu.add(LabelFactory(new HGS::Label, {400.f, 200.f, 150.f, 75.f}, "EXIT", *defont,
-                             {0xff, 0x88, 0x00, 0xff}, {0x00, 0x00, 0xff, 0xff}));
+    mainMenu.add(LabelFactory({100.f, 200.f, 150.f, 75.f}, "PLAY", *defont,
+                              {0x00, 0x00, 0xff, 0xff}, {0xff, 0x88, 0x00, 0xff}));
+    mainMenu.add(LabelFactory({400.f, 200.f, 150.f, 75.f}, "EXIT", *defont,
+                              {0xff, 0x88, 0x00, 0xff}, {0x00, 0x00, 0xff, 0xff}));
     HGS::Widget* btn{mainMenu.get(0)};
     HGS::Widget* ext{mainMenu.get(1)};
 
@@ -71,8 +70,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     fillDemoScene(demoScene);
     HGS::Widget* box{demoScene.get(1)};
     box->setCallBack([&demoScene, &srand_lmbd]() {
-        demoScene.add(BoxFactory(new HGS::Box,
-                                 {static_cast<float>(srand_lmbd() % 600) + 20.f,
+        demoScene.add(HGS::BoxFactory({static_cast<float>(srand_lmbd() % 600) + 20.f,
                                   static_cast<float>(srand_lmbd() % 440) + 20.f, 20.f, 20.f},
                                  {static_cast<Uint8>(srand_lmbd() % 0xff),
                                   static_cast<Uint8>(srand_lmbd() % 0xff),
@@ -101,8 +99,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                         fillDemoScene(demoScene);
                         box = demoScene.get(1);
                         box->setCallBack([&demoScene, &srand_lmbd]() {
-                            demoScene.add(BoxFactory(
-                                new HGS::Box,
+                            demoScene.add(HGS::BoxFactory(
                                 {static_cast<float>(srand_lmbd() % 600) + 20.f,
                                  static_cast<float>(srand_lmbd() % 440) + 20.f, 20.f, 20.f},
                                 {static_cast<Uint8>(srand_lmbd() % 0xff),
