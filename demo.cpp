@@ -23,6 +23,10 @@
 constexpr std::string_view FONT_FILE{"./assets/fonts/OpenSans-Regular.ttf"};
 HGS::Font* defont{nullptr};
 
+SDL_Event e{};
+float mx;
+float my;
+
 enum class Scenes
 {
     None = 0,
@@ -37,41 +41,14 @@ struct MMSceneHandle
     HGS::Widget* extBtn;
 } mainMenuHandle;
 
-void InitMainMenuHandle(struct MMSceneHandle& mmh)
-{
-    mmh.scene.clear();
-    mmh.scene.add(LabelFactory({100.f, 200.f, 150.f, 75.f}, "PLAY", *defont,
-                               {0x00, 0x00, 0xff, 0xff}, {0xff, 0x88, 0x00, 0xff}));
-    mmh.scene.add(LabelFactory({400.f, 200.f, 150.f, 75.f}, "EXIT", *defont,
-                               {0xff, 0x88, 0x00, 0xff}, {0x00, 0x00, 0xff, 0xff}));
-    mmh.playBtn = mmh.scene.get(0);
-    mmh.extBtn = mmh.scene.get(1);
-    mmh.extBtn->setCallBack([] { activeScene = Scenes::PlayScene; });
-}
-
 struct DemoSceneHandle
 {
     HGS::Scene scene;
     HGS::Widget* box;
 } demoSceneHandle;
 
-void InitDemoSceneHandle(struct DemoSceneHandle& dsh)
-{
-    dsh.scene.clear();
-    dsh.scene.add(HGS::LabelFactory({0.f, 0.f, 640.f, 480.f}, "Demo!", *defont,
-                                    {0xff, 0xff, 0xff, 0x00}, {0xff, 0x88, 0x00, 0xff}));
-    dsh.scene.add(HGS::BoxFactory({10.f, 20.f, 100.f, 100.f}, {0xff, 0x00, 0xff, 0xff}));
-    dsh.scene.add(HGS::BoxFactory({300.f, 100.f, 42.f, 300.f}, {0xff, 0xff, 0xff, 127}));
-    dsh.scene.add(HGS::CircleFactory({150.f, 20.f}, 49.f, {0xff, 0x00, 0x00, 0xff}));
-    dsh.box = dsh.scene.get(1);
-    dsh.box->setCallBack([&dsh] {
-        dsh.scene.add(HGS::BoxFactory({static_cast<float>(std::rand() % 600) + 20.f,
-                                       static_cast<float>(std::rand() % 440) + 20.f, 20.f, 20.f},
-                                      {static_cast<Uint8>(std::rand() % 0xff),
-                                       static_cast<Uint8>(std::rand() % 0xff),
-                                       static_cast<Uint8>(std::rand() % 0xff), 0xff}));
-    });
-}
+void InitMainMenuHandle();
+void InitDemoSceneHandle();
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -90,19 +67,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         return static_cast<int>(rc);
     }
 
-    bool main_loop{true};
-    SDL_Event e{};
-    float mx;
-    float my;
-
     activeScene = Scenes::MainMenuScene;
-    InitMainMenuHandle(mainMenuHandle);
+    InitMainMenuHandle();
 
     SDL_Log("\n\n==== MAIN LOOP ===\n\n");
     while (activeScene != Scenes::None) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_EVENT_QUIT) {
-                main_loop = false;
+                activeScene = Scenes::None;
             } else if (e.type == SDL_EVENT_KEY_UP) {
                 auto k{e.key.key};
                 if (k == SDLK_Q || k == SDLK_ESCAPE) {
@@ -116,20 +88,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                 SDL_GetMouseState(&mx, &my);
                 if (activeScene == Scenes::MainMenuScene) {
                     if (mainMenuHandle.playBtn->isContains(mx, my)) {
-                        activeScene = Scenes::PlayScene;
-                        InitDemoSceneHandle(demoSceneHandle);
+                        mainMenuHandle.playBtn->call2back();
                     } else if (mainMenuHandle.extBtn->isContains(mx, my)) {
-                        activeScene = Scenes::None;
+                        mainMenuHandle.extBtn->call2back();
                     }
                 } else {
-                    if (demoSceneHandle.box->isContains(mx, my)) {
-                        dynamic_cast<HGS::Box*>(demoSceneHandle.box)
-                            ->setBG({0x00, 0x00, 0xff, 0xff});
-                    } else {
-                        demoSceneHandle.box->setPos({mx, my});
-                        dynamic_cast<HGS::Box*>(demoSceneHandle.box)
-                            ->setBG({0xff, 0x00, 0x00, 0xff});
-                    }
                     demoSceneHandle.box->call2back();
                 }
             }
@@ -154,4 +117,48 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     mainMenuHandle.scene.clear();
     HGS::ENG::deinit();
     return 0;
+}
+
+void InitMainMenuHandle()
+{
+    mainMenuHandle.scene.clear();
+    mainMenuHandle.scene.add(LabelFactory({100.f, 200.f, 150.f, 75.f}, "PLAY", *defont,
+                                          {0x00, 0x00, 0xff, 0xff}, {0xff, 0x88, 0x00, 0xff}));
+    mainMenuHandle.scene.add(LabelFactory({400.f, 200.f, 150.f, 75.f}, "EXIT", *defont,
+                                          {0xff, 0x88, 0x00, 0xff}, {0x00, 0x00, 0xff, 0xff}));
+    mainMenuHandle.playBtn = mainMenuHandle.scene.get(0);
+    mainMenuHandle.playBtn->setCallBack([] {
+        activeScene = Scenes::PlayScene;
+        InitDemoSceneHandle();
+    });
+    mainMenuHandle.extBtn = mainMenuHandle.scene.get(1);
+    mainMenuHandle.extBtn->setCallBack([] { activeScene = Scenes::None; });
+}
+
+
+void InitDemoSceneHandle()
+{
+    demoSceneHandle.scene.clear();
+    demoSceneHandle.scene.add(HGS::LabelFactory({0.f, 0.f, 640.f, 480.f}, "Demo!", *defont,
+                                                {0xff, 0xff, 0xff, 0x00},
+                                                {0xff, 0x88, 0x00, 0xff}));
+    demoSceneHandle.scene.add(
+        HGS::BoxFactory({10.f, 20.f, 100.f, 100.f}, {0xff, 0x00, 0xff, 0xff}));
+    demoSceneHandle.scene.add(
+        HGS::BoxFactory({300.f, 100.f, 42.f, 300.f}, {0xff, 0xff, 0xff, 127}));
+    demoSceneHandle.scene.add(HGS::CircleFactory({150.f, 20.f}, 49.f, {0xff, 0x00, 0x00, 0xff}));
+    demoSceneHandle.box = demoSceneHandle.scene.get(1);
+    demoSceneHandle.box->setCallBack([] {
+        if (demoSceneHandle.box->isContains(mx, my)) {
+            dynamic_cast<HGS::Box*>(demoSceneHandle.box)->setBG({0x00, 0x00, 0xff, 0xff});
+        } else {
+            demoSceneHandle.box->setPos({mx, my});
+            dynamic_cast<HGS::Box*>(demoSceneHandle.box)->setBG({0xff, 0x00, 0x00, 0xff});
+        }
+        demoSceneHandle.scene.add(HGS::BoxFactory(
+            {static_cast<float>(std::rand() % 600) + 20.f,
+             static_cast<float>(std::rand() % 440) + 20.f, 20.f, 20.f},
+            {static_cast<Uint8>(std::rand() % 0xff), static_cast<Uint8>(std::rand() % 0xff),
+             static_cast<Uint8>(std::rand() % 0xff), 0xff}));
+    });
 }
