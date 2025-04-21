@@ -47,8 +47,21 @@ struct DemoSceneHandle
     HGS::Widget* box;
 } demoSceneHandle;
 
+struct PlaySceneHandle
+{
+    HGS::Scene scene;
+    HGS::Widget* player;
+    HGS::Widget* ball;
+    HGS::Widget* coa;
+    HGS::Widget* score;
+    int playerScore;
+    int coaScore;
+
+} playSceneHandle;
+
 void InitMainMenuHandle();
 void InitDemoSceneHandle();
+void InitPlaySceneHandle();
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -91,10 +104,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                         mainMenuHandle.playBtn->call2back();
                     } else if (mainMenuHandle.extBtn->isContains(mx, my)) {
                         mainMenuHandle.extBtn->call2back();
-                    }
-                } else {
-                    demoSceneHandle.box->call2back();
-                }
+                    }}
+                // } else {
+                //     demoSceneHandle.box->call2back();
+                // }
             }
             SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(r, 0x00, 0x00, 0x00, 0xff);
@@ -104,7 +117,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                 mainMenuHandle.scene.render(r);
                 break;
             case Scenes::PlayScene:
-                demoSceneHandle.scene.render(r);
+                playSceneHandle.scene.render(r);
             default:
                 // todo
                 break;
@@ -129,7 +142,7 @@ void InitMainMenuHandle()
     mainMenuHandle.playBtn = mainMenuHandle.scene.get(0);
     mainMenuHandle.playBtn->setCallBack([] {
         activeScene = Scenes::PlayScene;
-        InitDemoSceneHandle();
+        InitPlaySceneHandle();
     });
     mainMenuHandle.extBtn = mainMenuHandle.scene.get(1);
     mainMenuHandle.extBtn->setCallBack([] { activeScene = Scenes::None; });
@@ -161,4 +174,11 @@ void InitDemoSceneHandle()
             {static_cast<Uint8>(std::rand() % 0xff), static_cast<Uint8>(std::rand() % 0xff),
              static_cast<Uint8>(std::rand() % 0xff), 0xff}));
     });
+}
+
+void InitPlaySceneHandle()
+{
+    playSceneHandle.scene.clear();
+    playSceneHandle.scene.add(HGS::BoxFactory({20.f, 160.f, 20.f, 160.f}, {0x00, 0x00, 0xff, 0xff}));
+    playSceneHandle.scene.add(HGS::BoxFactory({600.f, 160.f, 20.f, 160.f}, {0xff, 0x00, 0x00, 0xff}));
 }
