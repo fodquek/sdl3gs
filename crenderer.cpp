@@ -14,7 +14,7 @@ Renderer::~Renderer()
         SDL_DestroyRenderer(sdl_renderer);
     }
 }
-Renderer::operator SDL_Renderer*()
+Renderer::operator SDL_Renderer*() const
 {
     return sdl_renderer;
 }

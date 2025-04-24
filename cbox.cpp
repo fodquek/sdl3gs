@@ -48,7 +48,7 @@ void Box::setBG(const SDL_Color& c)
     bg = c;
 }
 
-Widget* BoxFactory(const SDL_FRect& g, const SDL_Color& bg)
+Box* BoxFactory(const SDL_FRect& g, const SDL_Color& bg)
 {
     Box* box {new Box};
     box->setBG(bg);

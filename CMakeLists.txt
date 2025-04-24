@@ -10,15 +10,18 @@ add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
 
 #demo pong game
-add_executable(demo demo.cpp
+add_executable(demo WIN32 demo.cpp
                     ceng.cpp ceng.h
                     cwindow.cpp cwindow.h
                     crenderer.cpp crenderer.h
                     cfont.cpp cfont.h
                     cwidget.cpp cwidget.h
                     cbox.cpp cbox.h
-                    clabel.cpp clabel.h
+                    cpaddle.cpp cpaddle.cpp
                     ccircle.cpp ccircle.h
+                    cball.cpp cball.h
+                    cscores.cpp cscores.h
+                    clabel.cpp clabel.h
                     cscene.cpp cscene.h)
 target_link_libraries(demo PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
 set_property(TARGET demo PROPERTY CXX_STANDARD 20)

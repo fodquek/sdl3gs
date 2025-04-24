@@ -15,7 +15,7 @@ Window::~Window()
         SDL_DestroyWindow(sdl_window);
     }
 }
-Window::operator SDL_Window*()
+Window::operator SDL_Window*() const
 {
     return sdl_window;
 }

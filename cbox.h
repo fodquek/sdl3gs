@@ -24,7 +24,7 @@ private:
 };
 
 
-Widget* BoxFactory(const SDL_FRect& g, const SDL_Color& bg);
+Box* BoxFactory(const SDL_FRect& g, const SDL_Color& bg);
 
 } // namespace HGS
 #endif

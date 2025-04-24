@@ -11,7 +11,7 @@ namespace HGS
         ~Font();
         Font(const Font& f) = delete;
         operator TTF_Font*();
-        TTF_Font* getFont();
+        TTF_Font* getFont() const;
         bool clear();
         private:
         TTF_Font* font {nullptr};
