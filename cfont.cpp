@@ -16,7 +16,7 @@ namespace HGS
     {
         return font;
     }
-    TTF_Font* Font::getFont()
+    TTF_Font* Font::getFont() const
     {
         return font; 
     }

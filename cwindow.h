@@ -11,7 +11,7 @@ public:
     ~Window();
     Window(const Window& w) = delete;
     Window operator=(const Window& w) = delete;
-    operator SDL_Window*();
+    operator SDL_Window*() const;
 
 private:
     SDL_Window* sdl_window;

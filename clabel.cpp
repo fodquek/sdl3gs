@@ -9,7 +9,7 @@ Label::~Label()
 void Label::render(SDL_Renderer* r) const
 {
     Box::render(r);
-    SDL_Surface* surface{TTF_RenderText_Solid(font, text.data(), 0, fc)};
+    SDL_Surface* surface{TTF_RenderText_Solid(font, text.c_str(), 0, fc)};
     if (!surface) {
         SDL_Log("CANT CREATE SURFACE@Label::RENDER\n");
     }
@@ -25,14 +25,14 @@ void Label::render(SDL_Renderer* r) const
     SDL_DestroyTexture(texture);
 }
 
-std::string_view Label::getText() const
+std::string Label::getText() const
 {
     return text;
 }
 
-void Label::setText(const std::string_view t)
+void Label::setText(std::string_view t)
 {
-    text = t;
+    text = t.data();
 }
 
 bool Label::testFont() const
@@ -55,7 +55,7 @@ void Label::setFC(const SDL_Color& c)
     fc = c;
 }
 
-Widget* LabelFactory(const SDL_FRect& g, const std::string_view text, TTF_Font* font,
+Label* LabelFactory(const SDL_FRect& g, std::string_view text, TTF_Font* font,
     const SDL_Color& bg, const SDL_Color& fc)
 {
     Label* label {new Label};
