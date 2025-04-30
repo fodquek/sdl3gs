@@ -58,11 +58,11 @@ bool initWSA();
 int stopWSA();
 #endif
 
-enum class RX_Recv_Res
+enum class RX_Recv_Res : int
 {
     MinusOne = -1,
     Empty = 0,
-    New,
+    // values within [1..<-1] valid
 };
 
 struct RX_Buf_Slice

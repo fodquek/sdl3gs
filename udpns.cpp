@@ -158,12 +158,10 @@ bool UDP::rxAllocated()
 RX_Recv_Res UDP::peek()
 {
     const auto peek_bytes = recv(rx, (buf + rx_bytes), (BUF_LEN - 1 - rx_bytes), MSG_PEEK);
-    if (peek_bytes == -1) {
-        return RX_Recv_Res::MinusOne;
-    } else if (peek_bytes == 0) {
-        return RX_Recv_Res::Empty;
-    } 
-    return RX_Recv_Res::New;
+    // if (static_cast<RX_Recv_Res>(peek_bytes) == RX_Recv_Res::Empty) {
+    //     read(); // flush buffer cuz its empty AND IT AINT PILE UP LATER ON...
+    // }
+    return RX_Recv_Res{peek_bytes};
 }
 
 void UDP::read()

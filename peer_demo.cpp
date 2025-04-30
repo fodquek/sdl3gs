@@ -8,26 +8,27 @@ bool CON_CON{true};
 void rxThread(UDPNS::UDP* udpMan)
 {
     while (true) {
-        if (!CON_CON) {
+        if (!CON_CON) { 
             std::cerr << "CON_CON DEAD SO RX...\n";
             break;
         }
-        const auto peek_res{udpMan->peek()};
+        const UDPNS::RX_Recv_Res peek_res{udpMan->peek()};
         if (peek_res == UDPNS::RX_Recv_Res::MinusOne) {
-            std::cerr << "RECEIVE ERR\n";
+            std::cerr << "RECEIVE <MinusONE>\n";
             break;
         }
-        if (peek_res == UDPNS::RX_Recv_Res::New) {
-            udpMan->read();
-            const auto rxBufSlice{udpMan->getRXBufSlice()};
-            std::cerr << rxBufSlice.rx_bytes << " - " << rxBufSlice.buf << "\n";
-            if (std::string_view(rxBufSlice.buf) == "KAPAT") {
-                std::cerr << "RX KAPAT GELDI\n";
-                CON_CON = false;
-                break;
-            }
-            udpMan->clearRXBuf();
+        udpMan->read();
+        const auto rxBufSlice{udpMan->getRXBufSlice()};
+        if (std::string_view{rxBufSlice.buf} == "") {
+            continue;
         }
+        std::cerr << rxBufSlice.rx_bytes << " - " << rxBufSlice.buf << "\n";
+        if (std::string_view(rxBufSlice.buf) == "KAPAT") {
+            std::cerr << "RX KAPAT GELDI\n";
+            CON_CON = false;
+            break;
+        }
+        udpMan->clearRXBuf();
     }
     std::cerr << "RX DOWN\n";
 }
@@ -40,12 +41,18 @@ void txThread(UDPNS::UDP* udpMan)
         }
         std::string msg;
         std::cin >> msg;
-        udpMan->transmit(msg);
+        if (msg == "e") {
+            for (int i {0}; i < 10; ++i)
+                udpMan->transmit("");
+            continue;
+        }
         if (msg == "KAPAT") {
             std::cerr << "TX KAPAT GONDERDIK\n";
             CON_CON = false;
+            udpMan->transmit(msg);
             break;
         }
+        udpMan->transmit(msg);
     }
     std::cerr << "TX DOWN\n";
 }
