@@ -15,8 +15,8 @@ public:
 
     virtual bool isContains(float mx, float my) const = 0;
     virtual void render(SDL_Renderer* r) const = 0;
-    void setCallBack(std::function<void()> cb);
-    void call2back();
+    Widget* setCallBack(std::function<void()> cb);
+    Widget* call2back();
 
     SDL_FPoint getPos() const;
     void setPos(const float x, const float y);

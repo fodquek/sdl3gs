@@ -10,7 +10,7 @@ namespace HGS
         public:
             Scene() = default;
             ~Scene();
-            void add(Widget* w);
+            Widget* add(Widget* w);
             Widget* get(size_t i) const;
             void render(SDL_Renderer* r) const;
             void clear();

@@ -20,6 +20,14 @@ void Ball::step(float dt)
     p.y += vel.y * dt;
     setPos(p);
 }
+void Ball::velXinverse()
+{
+    vel.x *= -1.f;
+}
+void Ball::velYinverse()
+{
+    vel.y *= -1.f;
+}
 Widget* BallFactory(const SDL_FPoint& p, const float r, const SDL_Color& bg, const Velocity& v)
 {
     Ball* ball{new Ball};
