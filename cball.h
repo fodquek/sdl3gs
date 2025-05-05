@@ -16,6 +16,8 @@ public:
     void setVel(const Velocity& v);
     Velocity getVel() const;
     void step(float dt);
+    void velXinverse();
+    void velYinverse();
 
 private:
     Velocity vel{0.f, 0.f};

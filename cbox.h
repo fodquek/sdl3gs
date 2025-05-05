@@ -15,6 +15,9 @@ public:
     SDL_FPoint getWH() const;
     void setWH(const SDL_FPoint& sizes);
 
+    SDL_FPoint getCenPos() const;
+    void setCenPos(const SDL_FPoint& cp);
+
     SDL_Color getBG() const;
     void setBG(const SDL_Color& c);
 

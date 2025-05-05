@@ -6,9 +6,11 @@ namespace HGS
         clear();
         SDL_Log("SCENE GONE\n");
     }
-    void Scene::add(Widget* w)
+    Widget* Scene::add(Widget* w)
     {
         widgets.push_back(std::move(w));
+        return *widgets.rbegin();
+        // return widgets.at(widgets.size() - 1);
     }
     Widget* Scene::get(size_t i) const
     {

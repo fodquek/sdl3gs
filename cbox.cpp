@@ -38,6 +38,22 @@ void Box::setWH(const SDL_FPoint& sizes)
     wh.y = sizes.y;
 }
 
+SDL_FPoint Box::getCenPos() const
+{
+    auto p {getPos()};
+    p.x += wh.x / 2.f;
+    p.y += wh.y / 2.f;
+    return p;
+}
+
+void Box::setCenPos(const SDL_FPoint& cp)
+{
+    auto p {cp};
+    p.x -= wh.x / 2.f;
+    p.y -= wh.y / 2.f;
+    setPos(p);
+}
+
 SDL_Color Box::getBG() const
 {
     return bg;
