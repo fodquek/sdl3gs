@@ -22,7 +22,8 @@ add_executable(demo WIN32 demo.cpp
                     cball.cpp cball.h
                     cscores.cpp cscores.h
                     clabel.cpp clabel.h
-                    cscene.cpp cscene.h)
+                    cscene.cpp cscene.h
+                    udpns.cpp udpns.h)
 target_link_libraries(demo PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
 set_property(TARGET demo PROPERTY CXX_STANDARD 20)
 set_property(TARGET demo PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -33,6 +34,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(demo PRIVATE /W4 /Oi /MT /permissive- /sdl)
 else()
     target_compile_options(demo PRIVATE -Wall -Wformat-overflow -Wextra -Wpedantic -pedantic-errors -Weffc++ -Wconversion -Wsign-conversion)
+endif()
+
+if(WIN32)
+    target_link_libraries(demo PRIVATE ws2_32)
+    add_definitions(-DUDPNS_WINDOWS)
+else()
+    target_link_libraries(demo -pthread)
 endif()
 
 add_executable(peer_demo peer_demo.cpp udpns.cpp udpns.h)

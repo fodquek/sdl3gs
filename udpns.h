@@ -1,8 +1,5 @@
 // https://learn.microsoft.com/en-us/windows/win32/winsock/creating-a-basic-winsock-application
 // https://beej.us/guide/bgnet/
-// #define UDPNS_WINDOWS
-#define UDPNS_WINDOWS
-
 #ifndef H_UDPNS
 #define H_UDPNS
 
