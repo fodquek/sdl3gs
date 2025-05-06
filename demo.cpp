@@ -419,6 +419,7 @@ void mpRXthread()
                     ib = ie + 1;
                     ie = buf.find(";", ib);
                     float ball_x{std::stof(std::string{buf.substr(ib, ie)})};
+                    ball_x = HGS::SCREEN_W - ball_x; // mirroring on client side
                     SDL_Log("%d %d %f\n", ib, ie, ball_x);
                     ib = ie + 1;
                     ie = buf.find(";", ib);
