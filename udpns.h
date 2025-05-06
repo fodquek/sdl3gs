@@ -3,6 +3,8 @@
 #ifndef H_UDPNS
 #define H_UDPNS
 
+#define UDPNS_WINDOWS
+
 #ifdef UDPNS_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -55,13 +57,6 @@ bool initWSA();
 int stopWSA();
 #endif
 
-enum class RX_Recv_Res : int
-{
-    MinusOne = -1,
-    Empty = 0,
-    // values within [1..<-1] valid
-};
-
 struct RX_Buf_Slice
 {
     char* buf;
@@ -82,28 +77,31 @@ public:
 
     [[nodiscard("MALLOC VARKE")]] bool makeBuffers();
 
-    bool gai(std::string_view host, std::string_view port);
-
     bool createSocket(std::string_view host, std::string_view port, bool RX);
     bool createRX(std::string_view host, std::string_view port);
     bool createTX(std::string_view host, std::string_view port);
-    void freeResults();
+    void freeRXResults();
+    void freeTXResults();
 
-    bool txAllocated();
     bool rxAllocated();
+    bool txAllocated();
 
-    RX_Recv_Res peek();
+    int peek();
     void read();
     bool clearRXBuf();
     len_t transmit(std::string_view msg);
     RX_Buf_Slice getRXBufSlice();
+    void clearRX();
+    void clearTX();
     void clearAll();
 
 private:
     sock_fd_t tx{BAD_SOCKET};
     sock_fd_t rx{BAD_SOCKET};
-    struct addrinfo* results{};
-    struct addrinfo* target{};
+    struct addrinfo* rx_results{};
+    struct addrinfo* tx_results{};
+    struct addrinfo* rx_target{};
+    struct addrinfo* tx_target{};
     char* buf{nullptr};
     len_t rx_bytes{0};
 };

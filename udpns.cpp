@@ -44,15 +44,23 @@ bool UDP::makeBuffers()
     return true;
 }
 
-void UDP::freeResults()
+void UDP::freeRXResults()
 {
-    if (results) {
-        freeaddrinfo(results);
-        results = nullptr;
+    if (rx_results) {
+        freeaddrinfo(rx_results);
+        rx_results = nullptr;
     }
 }
 
-bool UDP::gai(std::string_view host, std::string_view port)
+void UDP::freeTXResults()
+{
+    if (tx_results) {
+        freeaddrinfo(tx_results);
+        tx_results = nullptr;
+    }
+}
+
+bool UDP::createSocket(std::string_view host, std::string_view port, bool RX)
 {
     char* name{nullptr};
     char* serv{nullptr};
@@ -71,45 +79,26 @@ bool UDP::gai(std::string_view host, std::string_view port)
     } else {
         serv = const_cast<char*>(port.data());
     }
-
-    freeResults(); // check and free <addrinfo* results>
-
-    if (auto rv{getaddrinfo(name, serv, &req, &results)}; rv != GAI_OK) {
-        std::cerr << "getaddrinfo: " << gai_strerror(rv) << '\n';
-        return false;
-    }
-
-    return true;
-}
-
-bool UDP::createSocket(std::string_view host, std::string_view port, bool RX)
-{
+    auto sockfd{BAD_SOCKET};
     if (RX) {
         if (rx != BAD_SOCKET) {
             std::cerr << "RX SOCKET ALIVE YET CREATING NEW ONE?!";
             return false;
         }
-    } else {
-        if (tx != BAD_SOCKET) {
-            std::cerr << "RX SOCKET ALIVE YET CREATING NEW ONE?!";
+        freeRXResults(); // check and free <addrinfo* results>
+        if (auto rv{getaddrinfo(name, serv, &req, &rx_results)}; rv != GAI_OK) {
+            std::cerr << "getaddrinfo: " << gai_strerror(rv) << '\n';
             return false;
         }
-    }
-    if (!gai(host, port)) {
-        std::cerr << "GAI DEAD\n";
-        return false;
-    }
-
-    auto sockfd{BAD_SOCKET};
-    for (target = results; target; target = target->ai_next) {
-        if (sockfd = socket(target->ai_family, target->ai_socktype, target->ai_protocol);
-            sockfd == BAD_SOCKET) {
-            std::cerr << "socket miss\n";
-            continue;
-        }
-        if (RX) {
-            if (bind(sockfd, target->ai_addr, static_cast<ai_addrlen_t>(target->ai_addrlen)) ==
-                BAD_BIND) {
+        for (rx_target = rx_results; rx_target; rx_target = rx_target->ai_next) {
+            if (sockfd =
+                    socket(rx_target->ai_family, rx_target->ai_socktype, rx_target->ai_protocol);
+                sockfd == BAD_SOCKET) {
+                std::cerr << "socket miss\n";
+                continue;
+            }
+            if (bind(sockfd, rx_target->ai_addr,
+                     static_cast<ai_addrlen_t>(rx_target->ai_addrlen)) == BAD_BIND) {
 #ifdef UDPNS_WINDOWS
                 closesocket(sockfd);
 #else
@@ -118,18 +107,37 @@ bool UDP::createSocket(std::string_view host, std::string_view port, bool RX)
                 std::cerr << "bind miss\n";
                 continue;
             }
+
+            break; // this one is good so leave without setting to next addrinfo...
         }
-        break; // this one is good so leave without setting to next addrinfo...
-    }
-
-    if (target == nullptr) {
-        std::cerr << "failed to get socket/bind\n";
-        return false;
-    }
-
-    if (RX) {
+        if (rx_target == nullptr) {
+            std::cerr << "failed to get RX socket/bind\n";
+            return false;
+        }
         rx = sockfd;
     } else {
+        if (tx != BAD_SOCKET) {
+            std::cerr << "TX SOCKET ALIVE YET CREATING NEW ONE?!";
+            return false;
+        }
+        freeTXResults(); // check and free <addrinfo* results>
+        if (auto rv{getaddrinfo(name, serv, &req, &tx_results)}; rv != GAI_OK) {
+            std::cerr << "getaddrinfo: " << gai_strerror(rv) << '\n';
+            return false;
+        }
+        for (tx_target = tx_results; tx_target; tx_target = tx_target->ai_next) {
+            if (sockfd =
+                    socket(tx_target->ai_family, tx_target->ai_socktype, tx_target->ai_protocol);
+                sockfd == BAD_SOCKET) {
+                std::cerr << "socket miss\n";
+                continue;
+            }
+            break; // this one is good so leave without setting to next addrinfo...
+        }
+        if (tx_target == nullptr) {
+            std::cerr << "failed to get TX socket/bind\n";
+            return false;
+        }
         tx = sockfd;
     }
     return true; // all good
@@ -155,13 +163,13 @@ bool UDP::rxAllocated()
     return !(rx == BAD_SOCKET);
 }
 
-RX_Recv_Res UDP::peek()
+int UDP::peek()
 {
     const auto peek_bytes = recv(rx, (buf + rx_bytes), (BUF_LEN - 1 - rx_bytes), MSG_PEEK);
     // if (static_cast<RX_Recv_Res>(peek_bytes) == RX_Recv_Res::Empty) {
     //     read(); // flush buffer cuz its empty AND IT AINT PILE UP LATER ON...
     // }
-    return RX_Recv_Res{peek_bytes};
+    return peek_bytes;
 }
 
 void UDP::read()
@@ -187,8 +195,9 @@ RX_Buf_Slice UDP::getRXBufSlice()
 
 len_t UDP::transmit(std::string_view msg)
 {
-    const len_t tx_bytes = sendto(tx, msg.data(), static_cast<msg_len_t>(msg.length()), SENDTO_FLAG,
-                                  target->ai_addr, static_cast<ai_addrlen_t>(target->ai_addrlen));
+    const len_t tx_bytes =
+        sendto(tx, msg.data(), static_cast<msg_len_t>(msg.length()), SENDTO_FLAG,
+               tx_target->ai_addr, static_cast<ai_addrlen_t>(tx_target->ai_addrlen));
     if (tx_bytes == -1) {
         std::cerr << "send error\n";
         return false;
@@ -197,7 +206,7 @@ len_t UDP::transmit(std::string_view msg)
     return true;
 }
 
-void UDP::clearAll()
+void UDP::clearRX()
 {
     if (rx != BAD_SOCKET) {
 #ifdef UDPNS_WINDOWS
@@ -207,6 +216,14 @@ void UDP::clearAll()
 #endif
         rx = BAD_SOCKET;
     }
+    if (buf) {
+        delete[] buf;
+        buf = nullptr;
+    }
+}
+
+void UDP::clearTX()
+{
     if (tx != BAD_SOCKET) {
 #ifdef UDPNS_WINDOWS
         closesocket(tx);
@@ -215,11 +232,14 @@ void UDP::clearAll()
 #endif
         tx = BAD_SOCKET;
     }
-    if (buf) {
-        delete[] buf;
-        buf = nullptr;
-    }
-    freeResults();
+}
+
+void UDP::clearAll()
+{
+    freeRXResults();
+    clearRX();
+    freeTXResults();
+    clearTX();
 }
 
 UDP::~UDP()

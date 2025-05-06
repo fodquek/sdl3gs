@@ -14,6 +14,8 @@
 #include <vector>
 #include <ostream>
 #include <algorithm>
+#include <thread>
+#include <iomanip>
 
 #include "ceng.h"
 #include "crenderer.h"
@@ -26,16 +28,18 @@
 #include "clabel.h"
 #include "cscores.h"
 #include "cscene.h"
+#include "udpns.h"
 
 /**
  * Function Prototypes
  */
 void InitMainMenuHandle();
+void InitMPSceneHandle();
 void InitPlaySceneHandle();
-void InitMPCreateSceneHandle();
-void InitMPJoinSceneHandle();
 void NextRoundPlaySceneActors();
-size_t kInWrite();
+size_t kInWrite(SDL_Keycode k);
+void mpRXthread();
+void mpTXthread();
 /**
  * Global Constants
  */
@@ -47,59 +51,67 @@ constexpr std::string_view FONT_FILE{"./assets/fonts/OpenSans-Regular.ttf"};
 /**
  * Global Variables
  */
+bool KEEP_CON{true};
+bool SP{true};
+bool MP_FIRST_PACKAGE_CAME{false};
+UDPNS::UDP udpMan;
+Uint64 rx_ms{};
+Uint64 tx_ms{};
+int ARGC;
+char** ARGV;
 std::stringstream parser;
 HGS::Font* defont{nullptr};
 SDL_Event e;
 float mx{-1.f};
 float my{-1.f};
+Uint64 rx_ts;
 Uint64 milisecs;
 Uint64 cnt{0};
 bool press_up{false};
 bool press_down{false};
+enum class Roles
+{
+    Idle,
+    Server,
+    Client
+} activeRole;
 enum class Scenes
 {
     None = 0,
     MainMenuScene,
-    MPCreateScene,
-    MPJoinScene,
-    MPPlayScene,
+    MPScene,
     PlayScene
 } activeScene;
 struct MMSceneHandle
 {
     HGS::Scene scene;
-    HGS::Label* sPlayBtn;
-    HGS::Label* mpCreateBtn;
-    HGS::Label* mpJoinBtn;
+    HGS::Label* spBtn;
+    HGS::Label* mpBtn;
     HGS::Label* extBtn;
 } mainMenuHandle;
-struct MPCreateSceneHandle
+struct MPSceneHandle
 {
     HGS::Scene scene;
+    HGS::Label* myIP;
     HGS::Label* rxPort;
-    HGS::Label* createBtn;
-} mpcreateSceneHandle;
-struct MPJoinSceneHandle
-{
-    HGS::Scene scene;
-    HGS::Label* rxPort;
-    HGS::Label* hostIP;
+    HGS::Label* cohIP;
     HGS::Label* txPort;
-    HGS::Label* join;
     HGS::Label* writing;
-} mpjoinSceneHandle;
+    HGS::Label* create;
+    HGS::Label* join;
+} mpSceneHandle;
 struct PlaySceneHandle
 {
     HGS::Scene scene;
     HGS::Paddle* player;
-    HGS::Paddle* coa;
+    HGS::Paddle* coh;
     HGS::Ball* ball;
     HGS::Label* time;
     HGS::Label* scores;
     int min;
     int sec;
     int player_score;
-    int coa_score;
+    int coh_score;
 } playSceneHandle;
 
 namespace HGS
@@ -160,7 +172,7 @@ void InitMainMenuHandle()
     mainMenuHandle.scene.clear();
 
     // Single Play added to scene with its callback
-    mainMenuHandle.sPlayBtn =
+    mainMenuHandle.spBtn =
         dynamic_cast<HGS::Label*>(mainMenuHandle.scene
                                       .add(LabelFactory({50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H},
                                                         "SINGLE", *defont, HGS::RED, HGS::WHITE))
@@ -168,85 +180,147 @@ void InitMainMenuHandle()
                                           activeScene = Scenes::PlayScene;
                                           InitPlaySceneHandle();
                                       }));
-    // Multi Play added to scene with its callback
-    mainMenuHandle.mpCreateBtn = dynamic_cast<HGS::Label*>(
+    // Multi Play setup
+    mainMenuHandle.mpBtn = dynamic_cast<HGS::Label*>(
         mainMenuHandle.scene
-            .add(LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "MP CREATE", *defont,
+            .add(LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "MULTIPLAYER", *defont,
                               HGS::GREEN, HGS::WHITE))
             ->setCallBack([] {
-                activeScene = Scenes::MPCreateScene;
-                InitMPCreateSceneHandle();
+                activeScene = Scenes::MPScene;
+                InitMPSceneHandle();
             }));
-    // Multi Play added to scene with its callback
-    mainMenuHandle.mpJoinBtn =
-        dynamic_cast<HGS::Label*>(mainMenuHandle.scene
-                                      .add(LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H},
-                                                        "MP JOIN", *defont, HGS::BLUE, HGS::WHITE))
-                                      ->setCallBack([] {
-                                          activeScene = Scenes::MPJoinScene;
-                                          InitMPJoinSceneHandle();
-                                      }));
     // Exit button added to scene with its callback
     mainMenuHandle.extBtn =
         dynamic_cast<HGS::Label*>(mainMenuHandle.scene
-                                      .add(LabelFactory({50.f, 400.f, HGS::LABEL_W, HGS::LABEL_H},
-                                                        "EXIT", *defont, HGS::WHITE, HGS::BLACK))
+                                      .add(LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H},
+                                                        "EXIT", *defont, HGS::BLUE, HGS::BLACK))
                                       ->setCallBack([] { activeScene = Scenes::None; }));
 }
 
-void InitMPCreateSceneHandle()
+void InitMPSceneHandle()
 {
-    mpcreateSceneHandle.scene.clear();
+    mpSceneHandle.scene.clear();
 
-    mpcreateSceneHandle.rxPort =
-        dynamic_cast<HGS::Label*>(mpcreateSceneHandle.scene.add(HGS::LabelFactory(
-            {50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H}, "5000", *defont, HGS::BLUE, HGS::WHITE)));
-
-    mpcreateSceneHandle.createBtn = dynamic_cast<HGS::Label*>(mpcreateSceneHandle.scene.add(
-        HGS::LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "CREATE", *defont, HGS::YELLOW,
-                          HGS::WHITE)));
-}
-
-void InitMPJoinSceneHandle()
-{
-    mpjoinSceneHandle.scene.clear();
-
-    mpjoinSceneHandle.rxPort = dynamic_cast<HGS::Label*>(
-        mpjoinSceneHandle.scene
-            .add(HGS::LabelFactory({50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H}, "6000", *defont,
-                                   HGS::MAGENTA, HGS::WHITE))
+    mpSceneHandle.myIP = dynamic_cast<HGS::Label*>(
+        mpSceneHandle.scene
+            .add(HGS::LabelFactory({50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H},
+                                   (ARGC > 1 ? ARGV[1] : "localhost"), *defont, HGS::MAGENTA,
+                                   HGS::WHITE))
             ->setCallBack([] {
-                mpjoinSceneHandle.writing->setBG(HGS::MAGENTA);
-                mpjoinSceneHandle.writing = mpjoinSceneHandle.rxPort;
-                mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+                mpSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpSceneHandle.writing = mpSceneHandle.myIP;
+                mpSceneHandle.writing->setBG(HGS::CYAN);
             }));
 
-    mpjoinSceneHandle.hostIP = dynamic_cast<HGS::Label*>(
-        mpjoinSceneHandle.scene
-            .add(HGS::LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "localhost", *defont,
-                                   HGS::MAGENTA, HGS::WHITE))
+    mpSceneHandle.rxPort = dynamic_cast<HGS::Label*>(
+        mpSceneHandle.scene
+            .add(HGS::LabelFactory({250.f, 100.f, HGS::LABEL_W, HGS::LABEL_H},
+                                   (ARGC > 2 ? ARGV[2] : "5000"), *defont, HGS::MAGENTA,
+                                   HGS::WHITE))
             ->setCallBack([] {
-                mpjoinSceneHandle.writing->setBG(HGS::MAGENTA);
-                mpjoinSceneHandle.writing = mpjoinSceneHandle.hostIP;
-                mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+                mpSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpSceneHandle.writing = mpSceneHandle.rxPort;
+                mpSceneHandle.writing->setBG(HGS::CYAN);
             }));
 
-    mpjoinSceneHandle.txPort = dynamic_cast<HGS::Label*>(
-        mpjoinSceneHandle.scene
-            .add(HGS::LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H}, "5000", *defont,
-                                   HGS::MAGENTA, HGS::WHITE))
+    mpSceneHandle.cohIP = dynamic_cast<HGS::Label*>(
+        mpSceneHandle.scene
+            .add(HGS::LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H},
+                                   (ARGC > 3 ? ARGV[3] : "localhost"), *defont, HGS::MAGENTA,
+                                   HGS::WHITE))
             ->setCallBack([] {
-                mpjoinSceneHandle.writing->setBG(HGS::MAGENTA);
-                mpjoinSceneHandle.writing = mpjoinSceneHandle.txPort;
-                mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+                mpSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpSceneHandle.writing = mpSceneHandle.cohIP;
+                mpSceneHandle.writing->setBG(HGS::CYAN);
             }));
 
-    mpjoinSceneHandle.join =
-        dynamic_cast<HGS::Label*>(mpjoinSceneHandle.scene.add(HGS::LabelFactory(
-            {50.f, 400.f, HGS::LABEL_W, HGS::LABEL_H}, "JOIN", *defont, HGS::YELLOW, HGS::WHITE)));
+    mpSceneHandle.txPort = dynamic_cast<HGS::Label*>(
+        mpSceneHandle.scene
+            .add(HGS::LabelFactory({250.f, 200.f, HGS::LABEL_W, HGS::LABEL_H},
+                                   (ARGC > 4 ? ARGV[4] : "6000"), *defont, HGS::MAGENTA,
+                                   HGS::WHITE))
+            ->setCallBack([] {
+                mpSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpSceneHandle.writing = mpSceneHandle.txPort;
+                mpSceneHandle.writing->setBG(HGS::CYAN);
+            }));
 
-    mpjoinSceneHandle.writing = mpjoinSceneHandle.rxPort;
-    mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+    mpSceneHandle.writing = mpSceneHandle.myIP;
+    mpSceneHandle.writing->setBG(HGS::CYAN);
+
+    mpSceneHandle.create = dynamic_cast<HGS::Label*>(
+        mpSceneHandle.scene
+            .add(HGS::LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H}, "CREATE", *defont,
+                                   HGS::RED, HGS::WHITE))
+            ->setCallBack([] {
+                // start Server
+                activeRole = Roles::Idle;
+                udpMan.clearAll();
+                if (!udpMan.createRX(mpSceneHandle.myIP->getText(),
+                                     mpSceneHandle.rxPort->getText())) {
+                    SDL_Log("CANT CREATE RX\n");
+                    activeScene = Scenes::MainMenuScene;
+                    InitMainMenuHandle();
+                    return;
+                }
+                SDL_Log("SERVER RX UP\n");
+                if (!udpMan.makeBuffers()) {
+                    SDL_Log("MAKEBUFFER!!\n");
+                    activeScene = Scenes::MainMenuScene;
+                    InitMainMenuHandle();
+                    return;
+                }
+                SDL_Log("SERVER RX BUFFER UP\n");
+                if (!udpMan.createTX(mpSceneHandle.cohIP->getText(),
+                                     mpSceneHandle.txPort->getText())) {
+                    SDL_Log("CANT CREATE TX\n");
+                    activeScene = Scenes::MainMenuScene;
+                    InitMainMenuHandle();
+                }
+                SDL_Log("SERVER TX UP\n");
+                rx_ms = SDL_GetTicks();
+                tx_ms = SDL_GetTicks();
+                activeRole = Roles::Server;
+                activeScene = Scenes::PlayScene;
+                InitPlaySceneHandle();
+            }));
+
+    mpSceneHandle.join = dynamic_cast<HGS::Label*>(
+        mpSceneHandle.scene
+            .add(HGS::LabelFactory({250.f, 300.f, HGS::LABEL_W, HGS::LABEL_H}, "JOIN", *defont,
+                                   HGS::BLUE, HGS::WHITE))
+            ->setCallBack([] {
+                // start client
+                activeRole = Roles::Idle;
+                udpMan.clearAll();
+                if (!udpMan.createRX(mpSceneHandle.myIP->getText(),
+                                     mpSceneHandle.rxPort->getText())) {
+                    SDL_Log("CANT CREATE RX\n");
+                    activeScene = Scenes::MainMenuScene;
+                    InitMainMenuHandle();
+                    return;
+                }
+                SDL_Log("CLIENT RX UP\n");
+                if (!udpMan.makeBuffers()) {
+                    SDL_Log("MAKEBUFFER!!\n");
+                    activeScene = Scenes::MainMenuScene;
+                    InitMainMenuHandle();
+                    return;
+                }
+                SDL_Log("CLIENT RX BUFFER UP\n");
+                if (!udpMan.createTX(mpSceneHandle.cohIP->getText(),
+                                     mpSceneHandle.txPort->getText())) {
+                    SDL_Log("CANT CREATE TX\n");
+                    activeScene = Scenes::MainMenuScene;
+                    InitMainMenuHandle();
+                }
+                SDL_Log("CLIENT TX UP\n");
+                rx_ms = SDL_GetTicks();
+                tx_ms = SDL_GetTicks();
+                activeRole = Roles::Client;
+                activeScene = Scenes::PlayScene;
+                InitPlaySceneHandle();
+            }));
 }
 
 void InitPlaySceneHandle()
@@ -261,7 +335,7 @@ void InitPlaySceneHandle()
     /**
      * right paddle
      */
-    playSceneHandle.coa = dynamic_cast<HGS::Paddle*>(playSceneHandle.scene.add(HGS::PaddleFactory(
+    playSceneHandle.coh = dynamic_cast<HGS::Paddle*>(playSceneHandle.scene.add(HGS::PaddleFactory(
         {HGS::PADDLE_R_PX, HGS::PADDLE_PY, HGS::PADDLE_W, HGS::PADDLE_H}, HGS::PADDLE_R_BC)));
     /**
      * Clock
@@ -283,7 +357,7 @@ void InitPlaySceneHandle()
     playSceneHandle.min = 0;
     playSceneHandle.sec = 0;
     playSceneHandle.player_score = 0;
-    playSceneHandle.coa_score = 0;
+    playSceneHandle.coh_score = 0;
     cnt = 0;
 }
 
@@ -297,8 +371,8 @@ void NextRoundPlaySceneActors()
     /**
      * right paddle
      */
-    playSceneHandle.coa->setPos({HGS::PADDLE_R_PX, HGS::PADDLE_PY});
-    playSceneHandle.coa->setMove(0.f);
+    playSceneHandle.coh->setPos({HGS::PADDLE_R_PX, HGS::PADDLE_PY});
+    playSceneHandle.coh->setMove(0.f);
     /**
      * Ball
      */
@@ -315,14 +389,124 @@ size_t kInWrite(SDL_Keycode k)
     }
     return std::string::npos;
 }
+void mpRXthread()
+{
+    while (KEEP_CON) {
+        if (activeScene == Scenes::PlayScene) {
+            if (activeRole == Roles::Idle) {
+                continue;
+            }
+            auto res{udpMan.peek()};
+            if (res == -1) {
+                SDL_Log("RX DOWN <MinusOne\n");
+                KEEP_CON = false;
+                activeRole = Roles::Idle;
+                activeScene = Scenes::MainMenuScene;
+                InitMainMenuHandle();
+                continue;
+            }
+            if (res != 0) {
+                rx_ms = SDL_GetTicks();
+                udpMan.read();
+                auto rxBufSlice{udpMan.getRXBufSlice()};
+                SDL_Log("GOT %s\n", rxBufSlice.buf);
+                std::string_view buf{rxBufSlice.buf};
+                size_t ib{0};
+                size_t ie{buf.find(";")};
+                float coh_y{std::stof(std::string{buf.substr(ib, ie)})};
+                playSceneHandle.coh->setPos({HGS::PADDLE_R_PX, coh_y});
+                if (activeRole == Roles::Client) {
+                    ib = ie + 1;
+                    ie = buf.find(";", ib);
+                    float ball_x{std::stof(std::string{buf.substr(ib, ie)})};
+                    SDL_Log("%d %d %f\n", ib, ie, ball_x);
+                    ib = ie + 1;
+                    ie = buf.find(";", ib);
+                    float ball_y{std::stof(std::string{buf.substr(ib, ie)})};
+                    playSceneHandle.ball->setPos({ball_x, ball_y});
 
+                    ib = ie + 1;
+                    ie = buf.find(";", ib);
+                    int scores{std::stoi(std::string{buf.substr(ib, ie)})};
+                    playSceneHandle.player_score = scores % 10;
+                    playSceneHandle.coh_score = scores / 10;
+
+                    ib = ie + 1;
+                    ie = buf.find(";", ib);
+                    int min{std::stoi(std::string{buf.substr(ib, ie)})};
+                    ib = ie + 1;
+                    ie = buf.find(";", ib);
+                    int sec{std::stoi(std::string{buf.substr(ib, ie)})};
+                    playSceneHandle.min = min;
+                    playSceneHandle.sec = sec;
+                }
+                udpMan.clearRXBuf();
+            }
+            if ((SDL_GetTicks() - rx_ms) > 60000) {
+                // CONN DEADKE
+                KEEP_CON = false;
+                activeRole = Roles::Idle;
+                activeScene == Scenes::MainMenuScene;
+                InitMainMenuHandle();
+            }
+        }
+    }
+    SDL_Log("KEEP_CON DEAD, RX THREAD JOINS\n");
+}
+void mpTXthread()
+{
+    std::stringstream tx_parser;
+    while (KEEP_CON) {
+        if (activeScene == Scenes::PlayScene) {
+            if (activeRole == Roles::Idle) {
+                continue;
+            }
+            tx_parser.str("");
+            tx_parser.clear();
+            tx_parser << std::setprecision(5);
+            tx_parser << playSceneHandle.player->getPos().y;
+            tx_parser << ";";
+            if (activeRole == Roles::Server) {
+                tx_parser << playSceneHandle.ball->getPos().x;
+                tx_parser << ";";
+                tx_parser << playSceneHandle.ball->getPos().y;
+                tx_parser << ";";
+                tx_parser << playSceneHandle.player_score;
+                tx_parser << playSceneHandle.coh_score;
+                tx_parser << ";";
+                tx_parser << playSceneHandle.min;
+                tx_parser << ";";
+                tx_parser << playSceneHandle.sec;
+                tx_parser << ";";
+            }
+            udpMan.transmit(tx_parser.str());
+            while ((SDL_GetTicks() - tx_ms) < (1000 / 60)) {
+                ;
+            }
+            tx_ms = SDL_GetTicks();
+        }
+    }
+    SDL_Log("KEEP_CON DEAD, TX THREAD JOINS\n");
+}
 /**
  * **********
  * MAIN ENTRY
  * **********
  */
-int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+    ARGC = argc;
+    ARGV = argv;
+    activeRole = Roles::Idle;
+    std::jthread rxThreadHandle(mpRXthread);
+    std::jthread txThreadHandle(mpTXthread);
+#ifdef UDPNS_WINDOWS
+    if (!UDPNS::initWSA()) {
+        std::cerr << "WSA DOES NOT INIT, terminating...\n";
+        return -2;
+    }
+#endif
+
     std::srand(static_cast<unsigned int>(std::time(0)));
     if (const auto rc{HGS::ENG::init()}; rc != HGS::RC::OK) {
         std::cerr << "SDL_CANT_INIT\n";
@@ -348,28 +532,26 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
             } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 SDL_GetMouseState(&mx, &my);
                 if (activeScene == Scenes::MainMenuScene) {
-                    if (mainMenuHandle.sPlayBtn->isContains(mx, my)) {
-                        mainMenuHandle.sPlayBtn->call2back();
-                    } else if (mainMenuHandle.mpCreateBtn->isContains(mx, my)) {
-                        mainMenuHandle.mpCreateBtn->call2back();
-                    } else if (mainMenuHandle.mpJoinBtn->isContains(mx, my)) {
-                        mainMenuHandle.mpJoinBtn->call2back();
+                    if (mainMenuHandle.spBtn->isContains(mx, my)) {
+                        mainMenuHandle.spBtn->call2back();
+                    } else if (mainMenuHandle.mpBtn->isContains(mx, my)) {
+                        mainMenuHandle.mpBtn->call2back();
                     } else if (mainMenuHandle.extBtn->isContains(mx, my)) {
                         mainMenuHandle.extBtn->call2back();
                     }
-                } else if (activeScene == Scenes::MPCreateScene) {
-                    if (mpcreateSceneHandle.createBtn->isContains(mx, my)) {
-                        mpcreateSceneHandle.createBtn->call2back();
-                    }
-                } else if (activeScene == Scenes::MPJoinScene) {
-                    if (mpjoinSceneHandle.rxPort->isContains(mx, my)) {
-                        mpjoinSceneHandle.rxPort->call2back();
-                    } else if (mpjoinSceneHandle.hostIP->isContains(mx, my)) {
-                        mpjoinSceneHandle.hostIP->call2back();
-                    } else if (mpjoinSceneHandle.txPort->isContains(mx, my)) {
-                        mpjoinSceneHandle.txPort->call2back();
-                    } else if (mpjoinSceneHandle.join->isContains(mx, my)) {
-                        mpjoinSceneHandle.join->call2back();
+                } else if (activeScene == Scenes::MPScene) {
+                    if (mpSceneHandle.myIP->isContains(mx, my)) {
+                        mpSceneHandle.myIP->call2back();
+                    } else if (mpSceneHandle.rxPort->isContains(mx, my)) {
+                        mpSceneHandle.rxPort->call2back();
+                    } else if (mpSceneHandle.cohIP->isContains(mx, my)) {
+                        mpSceneHandle.cohIP->call2back();
+                    } else if (mpSceneHandle.txPort->isContains(mx, my)) {
+                        mpSceneHandle.txPort->call2back();
+                    } else if (mpSceneHandle.create->isContains(mx, my)) {
+                        mpSceneHandle.create->call2back();
+                    } else if (mpSceneHandle.join->isContains(mx, my)) {
+                        mpSceneHandle.join->call2back();
                     }
                 }
             } else if (e.type == SDL_EVENT_KEY_UP) {
@@ -385,26 +567,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                 } else if (k == SDLK_DOWN) {
                     press_down = false;
                 } else if (auto i{kInWrite(k)}; i != std::string::npos) {
-                    if (activeScene == Scenes::MPCreateScene) {
+                    if (activeScene == Scenes::MPScene) {
                         parser.str("");
                         parser.clear();
-                        parser << mpcreateSceneHandle.rxPort->getText();
+                        parser << mpSceneHandle.writing->getText();
                         parser << write_c[i];
-                        mpcreateSceneHandle.rxPort->setText(parser.str());
-                    } else if (activeScene == Scenes::MPJoinScene) {
-                        parser.str("");
-                        parser.clear();
-                        parser << mpjoinSceneHandle.writing->getText();
-                        parser << write_c[i];
-                        mpjoinSceneHandle.writing->setText(parser.str());
+                        mpSceneHandle.writing->setText(parser.str());
                     }
                 } else if (k == SDLK_BACKSPACE) {
-                    if (activeScene == Scenes::MPCreateScene) {
-                        std::string s{mpcreateSceneHandle.rxPort->getText()};
-                        mpcreateSceneHandle.rxPort->setText(s.substr(0, s.size() - 1));
-                    } else if (activeScene == Scenes::MPJoinScene) {
-                        std::string s{mpjoinSceneHandle.writing->getText()};
-                        mpjoinSceneHandle.writing->setText(s.substr(0, s.size() - 1));
+                    if (activeScene == Scenes::MPScene) {
+                        std::string s{mpSceneHandle.writing->getText()};
+                        mpSceneHandle.writing->setText(s.substr(0, s.size() - 1));
                     }
                 }
             } else if (e.type == SDL_EVENT_KEY_DOWN) {
@@ -428,17 +601,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
         if (activeScene == Scenes::MainMenuScene) {
             mainMenuHandle.scene.render(r);
-        } else if (activeScene == Scenes::MPCreateScene) {
-            mpcreateSceneHandle.scene.render(r);
-        } else if (activeScene == Scenes::MPJoinScene) {
-            mpjoinSceneHandle.scene.render(r);
+        } else if (activeScene == Scenes::MPScene) {
+            mpSceneHandle.scene.render(r);
         } else if (activeScene == Scenes::PlayScene) {
             /**
              * update render stuff
              */
-            playSceneHandle.ball->step(1.f);
             playSceneHandle.player->step(1.f);
-            playSceneHandle.coa->step(1.f);
+            if (activeRole != Roles::Client) {
+                playSceneHandle.ball->step(1.f);
+                playSceneHandle.coh->step(1.f);
+            }
             parser.str("");
             parser.clear();
             if (playSceneHandle.min < 10) {
@@ -451,19 +624,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
             }
             parser << playSceneHandle.sec;
             playSceneHandle.time->setText(parser.str());
-            if (playSceneHandle.player_score == 3) {
-                // player win
-                activeScene = Scenes::MainMenuScene;
-            } else if (playSceneHandle.coa_score == 3) {
-                // coa win
-                activeScene = Scenes::MainMenuScene;
-            }
+            // if (playSceneHandle.player_score == 3) {
+            //     // player win
+            //     activeScene = Scenes::MainMenuScene;
+            // } else if (playSceneHandle.coh_score == 3) {
+            //     // coa win
+            //     activeScene = Scenes::MainMenuScene;
+            // }
 
             parser.str("");
             parser.clear();
             parser << playSceneHandle.player_score;
             parser << " : ";
-            parser << playSceneHandle.coa_score;
+            parser << playSceneHandle.coh_score;
             playSceneHandle.scores->setText(parser.str());
             /**
              * set move player
@@ -488,35 +661,35 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
             /**
              * set move coa
              */
-            {
+            if (activeRole == Roles::Idle) {
                 const auto ball_y{playSceneHandle.ball->getPos().y};
-                const auto coa_y{playSceneHandle.coa->getCenPos().y};
-                const auto dy{coa_y - ball_y};
+                const auto coh_y{playSceneHandle.coh->getCenPos().y};
+                const auto dy{coh_y - ball_y};
                 if (dy < 0.f) {
-                    playSceneHandle.coa->setMove(HGS::PADDLE_SPD);
+                    playSceneHandle.coh->setMove(HGS::PADDLE_SPD);
 
                 } else if (dy > 0.f) {
-                    playSceneHandle.coa->setMove(-HGS::PADDLE_SPD);
+                    playSceneHandle.coh->setMove(-HGS::PADDLE_SPD);
                 } else {
-                    playSceneHandle.coa->setMove(0.f);
+                    playSceneHandle.coh->setMove(0.f);
                 }
-                if (auto p{playSceneHandle.coa->getPos()}; p.y < 0.f) {
+                if (auto p{playSceneHandle.coh->getPos()}; p.y < 0.f) {
                     p.y = 0.f;
-                    playSceneHandle.coa->setPos(p);
-                } else if (auto p{playSceneHandle.coa->getPos()};
+                    playSceneHandle.coh->setPos(p);
+                } else if (auto p{playSceneHandle.coh->getPos()};
                            p.y > (HGS::SCREEN_H - HGS::PADDLE_H)) {
                     p.y = (HGS::SCREEN_H - HGS::PADDLE_H);
-                    playSceneHandle.coa->setPos(p);
+                    playSceneHandle.coh->setPos(p);
                 }
             }
 
             /**
              * set vel ball
              */
-            {
+            if (activeRole != Roles::Client) {
                 const auto [bx, by]{playSceneHandle.ball->getPos()};
                 if (bx < 0.f) {
-                    playSceneHandle.coa_score += 1;
+                    playSceneHandle.coh_score += 1;
                     NextRoundPlaySceneActors();
                 } else if (bx > HGS::SCREEN_W) {
                     playSceneHandle.player_score += 1;
@@ -545,7 +718,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                     }
                 } else {
                     const auto ball_r{playSceneHandle.ball->getRadius()};
-                    const auto [x, y]{playSceneHandle.coa->getCenPos()};
+                    const auto [x, y]{playSceneHandle.coh->getCenPos()};
                     const auto dx{x - bx};
                     const auto dy{y - by};
                     if (dx > (-5.f - ball_r) && dx < (5.f + ball_r)) {
@@ -575,16 +748,21 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         }
         milisecs = SDL_GetTicks();
         ++cnt;
-        playSceneHandle.min = cnt / 3600;
-        playSceneHandle.sec = (cnt / 60) % 60;
+        if (activeRole != Roles::Client) {
+            playSceneHandle.min = cnt / 3600;
+            playSceneHandle.sec = (cnt / 60) % 60;
+        }
     }
     /**
      * add custom exit function via std
      */
+    KEEP_CON = false;
     playSceneHandle.scene.clear();
-    mpcreateSceneHandle.scene.clear();
-    mpjoinSceneHandle.scene.clear();
+    mpSceneHandle.scene.clear();
     mainMenuHandle.scene.clear();
     HGS::ENG::deinit();
+#ifdef UDPNS_WINDOWS
+    UDPNS::stopWSA();
+#endif
     return 0;
 }

@@ -12,8 +12,8 @@ void rxThread(UDPNS::UDP* udpMan)
             std::cerr << "CON_CON DEAD SO RX...\n";
             break;
         }
-        const UDPNS::RX_Recv_Res peek_res{udpMan->peek()};
-        if (peek_res == UDPNS::RX_Recv_Res::MinusOne) {
+        const int peek_res{udpMan->peek()};
+        if (peek_res == -1) {
             std::cerr << "RECEIVE <MinusONE>\n";
             break;
         }
