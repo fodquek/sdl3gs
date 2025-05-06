@@ -9,9 +9,11 @@
 #include <ctime>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <string_view>
 #include <vector>
 #include <ostream>
+#include <algorithm>
 
 #include "ceng.h"
 #include "crenderer.h"
@@ -30,12 +32,22 @@
  */
 void InitMainMenuHandle();
 void InitPlaySceneHandle();
+void InitMPCreateSceneHandle();
+void InitMPJoinSceneHandle();
 void NextRoundPlaySceneActors();
-
+size_t kInWrite();
 /**
  * Global Constants
  */
+constexpr size_t WRITE_SIZE{11};
+constexpr SDL_Keycode write_k[WRITE_SIZE] = {SDLK_0, SDLK_1, SDLK_2, SDLK_3, SDLK_4,     SDLK_5,
+                                             SDLK_6, SDLK_7, SDLK_8, SDLK_9, SDLK_PERIOD};
+constexpr char write_c[WRITE_SIZE] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'};
 constexpr std::string_view FONT_FILE{"./assets/fonts/OpenSans-Regular.ttf"};
+/**
+ * Global Variables
+ */
+std::stringstream parser;
 HGS::Font* defont{nullptr};
 SDL_Event e;
 float mx{-1.f};
@@ -48,20 +60,34 @@ enum class Scenes
 {
     None = 0,
     MainMenuScene,
+    MPCreateScene,
+    MPJoinScene,
+    MPPlayScene,
     PlayScene
 } activeScene;
 struct MMSceneHandle
 {
     HGS::Scene scene;
     HGS::Label* sPlayBtn;
-    HGS::Label* mPlayBtn;
+    HGS::Label* mpCreateBtn;
+    HGS::Label* mpJoinBtn;
     HGS::Label* extBtn;
 } mainMenuHandle;
-struct DemoSceneHandle
+struct MPCreateSceneHandle
 {
     HGS::Scene scene;
-    HGS::Box* box;
-} demoSceneHandle;
+    HGS::Label* rxPort;
+    HGS::Label* createBtn;
+} mpcreateSceneHandle;
+struct MPJoinSceneHandle
+{
+    HGS::Scene scene;
+    HGS::Label* rxPort;
+    HGS::Label* hostIP;
+    HGS::Label* txPort;
+    HGS::Label* join;
+    HGS::Label* writing;
+} mpjoinSceneHandle;
 struct PlaySceneHandle
 {
     HGS::Scene scene;
@@ -143,20 +169,84 @@ void InitMainMenuHandle()
                                           InitPlaySceneHandle();
                                       }));
     // Multi Play added to scene with its callback
-    mainMenuHandle.mPlayBtn =
+    mainMenuHandle.mpCreateBtn = dynamic_cast<HGS::Label*>(
+        mainMenuHandle.scene
+            .add(LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "MP CREATE", *defont,
+                              HGS::GREEN, HGS::WHITE))
+            ->setCallBack([] {
+                activeScene = Scenes::MPCreateScene;
+                InitMPCreateSceneHandle();
+            }));
+    // Multi Play added to scene with its callback
+    mainMenuHandle.mpJoinBtn =
         dynamic_cast<HGS::Label*>(mainMenuHandle.scene
-                                      .add(LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H},
-                                                        "MULTI", *defont, HGS::GREEN, HGS::WHITE))
+                                      .add(LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H},
+                                                        "MP JOIN", *defont, HGS::BLUE, HGS::WHITE))
                                       ->setCallBack([] {
-                                          activeScene = Scenes::PlayScene;
-                                          InitPlaySceneHandle();
+                                          activeScene = Scenes::MPJoinScene;
+                                          InitMPJoinSceneHandle();
                                       }));
     // Exit button added to scene with its callback
     mainMenuHandle.extBtn =
         dynamic_cast<HGS::Label*>(mainMenuHandle.scene
-                                      .add(LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H},
-                                                        "EXIT", *defont, HGS::BLUE, HGS::WHITE))
+                                      .add(LabelFactory({50.f, 400.f, HGS::LABEL_W, HGS::LABEL_H},
+                                                        "EXIT", *defont, HGS::WHITE, HGS::BLACK))
                                       ->setCallBack([] { activeScene = Scenes::None; }));
+}
+
+void InitMPCreateSceneHandle()
+{
+    mpcreateSceneHandle.scene.clear();
+
+    mpcreateSceneHandle.rxPort =
+        dynamic_cast<HGS::Label*>(mpcreateSceneHandle.scene.add(HGS::LabelFactory(
+            {50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H}, "5000", *defont, HGS::BLUE, HGS::WHITE)));
+
+    mpcreateSceneHandle.createBtn = dynamic_cast<HGS::Label*>(mpcreateSceneHandle.scene.add(
+        HGS::LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "CREATE", *defont, HGS::YELLOW,
+                          HGS::WHITE)));
+}
+
+void InitMPJoinSceneHandle()
+{
+    mpjoinSceneHandle.scene.clear();
+
+    mpjoinSceneHandle.rxPort = dynamic_cast<HGS::Label*>(
+        mpjoinSceneHandle.scene
+            .add(HGS::LabelFactory({50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H}, "6000", *defont,
+                                   HGS::MAGENTA, HGS::WHITE))
+            ->setCallBack([] {
+                mpjoinSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpjoinSceneHandle.writing = mpjoinSceneHandle.rxPort;
+                mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+            }));
+
+    mpjoinSceneHandle.hostIP = dynamic_cast<HGS::Label*>(
+        mpjoinSceneHandle.scene
+            .add(HGS::LabelFactory({50.f, 200.f, HGS::LABEL_W, HGS::LABEL_H}, "localhost", *defont,
+                                   HGS::MAGENTA, HGS::WHITE))
+            ->setCallBack([] {
+                mpjoinSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpjoinSceneHandle.writing = mpjoinSceneHandle.hostIP;
+                mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+            }));
+
+    mpjoinSceneHandle.txPort = dynamic_cast<HGS::Label*>(
+        mpjoinSceneHandle.scene
+            .add(HGS::LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H}, "5000", *defont,
+                                   HGS::MAGENTA, HGS::WHITE))
+            ->setCallBack([] {
+                mpjoinSceneHandle.writing->setBG(HGS::MAGENTA);
+                mpjoinSceneHandle.writing = mpjoinSceneHandle.txPort;
+                mpjoinSceneHandle.writing->setBG(HGS::CYAN);
+            }));
+
+    mpjoinSceneHandle.join =
+        dynamic_cast<HGS::Label*>(mpjoinSceneHandle.scene.add(HGS::LabelFactory(
+            {50.f, 400.f, HGS::LABEL_W, HGS::LABEL_H}, "JOIN", *defont, HGS::YELLOW, HGS::WHITE)));
+
+    mpjoinSceneHandle.writing = mpjoinSceneHandle.rxPort;
+    mpjoinSceneHandle.writing->setBG(HGS::CYAN);
 }
 
 void InitPlaySceneHandle()
@@ -216,6 +306,16 @@ void NextRoundPlaySceneActors()
     playSceneHandle.ball->setVel({5.f, 1.f});
 }
 
+size_t kInWrite(SDL_Keycode k)
+{
+    for (size_t i{0}; i < WRITE_SIZE; ++i) {
+        if (k == write_k[i]) {
+            return i;
+        }
+    }
+    return std::string::npos;
+}
+
 /**
  * **********
  * MAIN ENTRY
@@ -224,7 +324,6 @@ void NextRoundPlaySceneActors()
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
     std::srand(static_cast<unsigned int>(std::time(0)));
-
     if (const auto rc{HGS::ENG::init()}; rc != HGS::RC::OK) {
         std::cerr << "SDL_CANT_INIT\n";
         return static_cast<int>(rc);
@@ -251,10 +350,26 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                 if (activeScene == Scenes::MainMenuScene) {
                     if (mainMenuHandle.sPlayBtn->isContains(mx, my)) {
                         mainMenuHandle.sPlayBtn->call2back();
-                    } else if (mainMenuHandle.mPlayBtn->isContains(mx, my)) {
-                        mainMenuHandle.mPlayBtn->call2back();
+                    } else if (mainMenuHandle.mpCreateBtn->isContains(mx, my)) {
+                        mainMenuHandle.mpCreateBtn->call2back();
+                    } else if (mainMenuHandle.mpJoinBtn->isContains(mx, my)) {
+                        mainMenuHandle.mpJoinBtn->call2back();
                     } else if (mainMenuHandle.extBtn->isContains(mx, my)) {
                         mainMenuHandle.extBtn->call2back();
+                    }
+                } else if (activeScene == Scenes::MPCreateScene) {
+                    if (mpcreateSceneHandle.createBtn->isContains(mx, my)) {
+                        mpcreateSceneHandle.createBtn->call2back();
+                    }
+                } else if (activeScene == Scenes::MPJoinScene) {
+                    if (mpjoinSceneHandle.rxPort->isContains(mx, my)) {
+                        mpjoinSceneHandle.rxPort->call2back();
+                    } else if (mpjoinSceneHandle.hostIP->isContains(mx, my)) {
+                        mpjoinSceneHandle.hostIP->call2back();
+                    } else if (mpjoinSceneHandle.txPort->isContains(mx, my)) {
+                        mpjoinSceneHandle.txPort->call2back();
+                    } else if (mpjoinSceneHandle.join->isContains(mx, my)) {
+                        mpjoinSceneHandle.join->call2back();
                     }
                 }
             } else if (e.type == SDL_EVENT_KEY_UP) {
@@ -269,6 +384,28 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                     press_up = false;
                 } else if (k == SDLK_DOWN) {
                     press_down = false;
+                } else if (auto i{kInWrite(k)}; i != std::string::npos) {
+                    if (activeScene == Scenes::MPCreateScene) {
+                        parser.str("");
+                        parser.clear();
+                        parser << mpcreateSceneHandle.rxPort->getText();
+                        parser << write_c[i];
+                        mpcreateSceneHandle.rxPort->setText(parser.str());
+                    } else if (activeScene == Scenes::MPJoinScene) {
+                        parser.str("");
+                        parser.clear();
+                        parser << mpjoinSceneHandle.writing->getText();
+                        parser << write_c[i];
+                        mpjoinSceneHandle.writing->setText(parser.str());
+                    }
+                } else if (k == SDLK_BACKSPACE) {
+                    if (activeScene == Scenes::MPCreateScene) {
+                        std::string s{mpcreateSceneHandle.rxPort->getText()};
+                        mpcreateSceneHandle.rxPort->setText(s.substr(0, s.size() - 1));
+                    } else if (activeScene == Scenes::MPJoinScene) {
+                        std::string s{mpjoinSceneHandle.writing->getText()};
+                        mpjoinSceneHandle.writing->setText(s.substr(0, s.size() - 1));
+                    }
                 }
             } else if (e.type == SDL_EVENT_KEY_DOWN) {
                 const auto& k{e.key.key};
@@ -291,6 +428,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
         if (activeScene == Scenes::MainMenuScene) {
             mainMenuHandle.scene.render(r);
+        } else if (activeScene == Scenes::MPCreateScene) {
+            mpcreateSceneHandle.scene.render(r);
+        } else if (activeScene == Scenes::MPJoinScene) {
+            mpjoinSceneHandle.scene.render(r);
         } else if (activeScene == Scenes::PlayScene) {
             /**
              * update render stuff
@@ -298,7 +439,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
             playSceneHandle.ball->step(1.f);
             playSceneHandle.player->step(1.f);
             playSceneHandle.coa->step(1.f);
-            std::stringstream parser;
+            parser.str("");
+            parser.clear();
             if (playSceneHandle.min < 10) {
                 parser << "0";
             }
@@ -316,11 +458,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
                 // coa win
                 activeScene = Scenes::MainMenuScene;
             }
-            std::stringstream parser2;
-            parser2 << playSceneHandle.player_score;
-            parser2 << " : ";
-            parser2 << playSceneHandle.coa_score;
-            playSceneHandle.scores->setText(parser2.str());
+
+            parser.str("");
+            parser.clear();
+            parser << playSceneHandle.player_score;
+            parser << " : ";
+            parser << playSceneHandle.coa_score;
+            playSceneHandle.scores->setText(parser.str());
             /**
              * set move player
              */
@@ -437,8 +581,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     /**
      * add custom exit function via std
      */
-    demoSceneHandle.scene.clear();
     playSceneHandle.scene.clear();
+    mpcreateSceneHandle.scene.clear();
+    mpjoinSceneHandle.scene.clear();
     mainMenuHandle.scene.clear();
     HGS::ENG::deinit();
     return 0;

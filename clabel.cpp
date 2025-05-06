@@ -9,6 +9,9 @@ Label::~Label()
 void Label::render(SDL_Renderer* r) const
 {
     Box::render(r);
+    if (text == "") {
+        return;
+    }
     SDL_Surface* surface{TTF_RenderText_Solid(font, text.c_str(), 0, fc)};
     if (!surface) {
         SDL_Log("CANT CREATE SURFACE@Label::RENDER\n");
