@@ -36,10 +36,16 @@
 void InitMainMenuHandle();
 void InitMPSceneHandle();
 void InitPlaySceneHandle();
+void InitFinalSceneHandle(bool w);
 void NextRoundPlaySceneActors();
 size_t kInWrite(SDL_Keycode k);
 void mpRXthread();
 void mpTXthread();
+void MovePlayerPaddle();
+void MoveCOHPaddle();
+void MoveBall();
+void UpdateScores();
+void UpdateClock();
 /**
  * Global Constants
  */
@@ -52,7 +58,6 @@ constexpr std::string_view FONT_FILE{"./assets/fonts/OpenSans-Regular.ttf"};
  * Global Variables
  */
 bool KEEP_CON{true};
-bool SP{true};
 bool MP_FIRST_PACKAGE_CAME{false};
 UDPNS::UDP udpMan;
 Uint64 rx_ms{};
@@ -80,7 +85,8 @@ enum class Scenes
     None = 0,
     MainMenuScene,
     MPScene,
-    PlayScene
+    PlayScene,
+    FinalScene,
 } activeScene;
 struct MMSceneHandle
 {
@@ -113,6 +119,11 @@ struct PlaySceneHandle
     int player_score;
     int coh_score;
 } playSceneHandle;
+struct FinalSceneHandle
+{
+    HGS::Scene scene;
+    HGS::Label* result;
+} finalSceneHandle;
 
 namespace HGS
 {
@@ -177,6 +188,7 @@ void InitMainMenuHandle()
                                       .add(LabelFactory({50.f, 100.f, HGS::LABEL_W, HGS::LABEL_H},
                                                         "SINGLE", *defont, HGS::RED, HGS::WHITE))
                                       ->setCallBack([] {
+                                          activeRole = Roles::Idle;
                                           activeScene = Scenes::PlayScene;
                                           InitPlaySceneHandle();
                                       }));
@@ -195,6 +207,8 @@ void InitMainMenuHandle()
                                       .add(LabelFactory({50.f, 300.f, HGS::LABEL_W, HGS::LABEL_H},
                                                         "EXIT", *defont, HGS::BLUE, HGS::BLACK))
                                       ->setCallBack([] { activeScene = Scenes::None; }));
+
+    MP_FIRST_PACKAGE_CAME = false;
 }
 
 void InitMPSceneHandle()
@@ -258,16 +272,14 @@ void InitMPSceneHandle()
                 udpMan.clearAll();
                 if (!udpMan.createRX(mpSceneHandle.myIP->getText(),
                                      mpSceneHandle.rxPort->getText())) {
-                    SDL_Log("CANT CREATE RX\n");
+                    SDL_Log("SERVER CANT CREATE RX\n");
                     activeScene = Scenes::MainMenuScene;
-                    InitMainMenuHandle();
                     return;
                 }
                 SDL_Log("SERVER RX UP\n");
                 if (!udpMan.makeBuffers()) {
                     SDL_Log("MAKEBUFFER!!\n");
                     activeScene = Scenes::MainMenuScene;
-                    InitMainMenuHandle();
                     return;
                 }
                 SDL_Log("SERVER RX BUFFER UP\n");
@@ -275,7 +287,7 @@ void InitMPSceneHandle()
                                      mpSceneHandle.txPort->getText())) {
                     SDL_Log("CANT CREATE TX\n");
                     activeScene = Scenes::MainMenuScene;
-                    InitMainMenuHandle();
+                    return;
                 }
                 SDL_Log("SERVER TX UP\n");
                 rx_ms = SDL_GetTicks();
@@ -297,14 +309,12 @@ void InitMPSceneHandle()
                                      mpSceneHandle.rxPort->getText())) {
                     SDL_Log("CANT CREATE RX\n");
                     activeScene = Scenes::MainMenuScene;
-                    InitMainMenuHandle();
                     return;
                 }
                 SDL_Log("CLIENT RX UP\n");
                 if (!udpMan.makeBuffers()) {
                     SDL_Log("MAKEBUFFER!!\n");
                     activeScene = Scenes::MainMenuScene;
-                    InitMainMenuHandle();
                     return;
                 }
                 SDL_Log("CLIENT RX BUFFER UP\n");
@@ -312,7 +322,7 @@ void InitMPSceneHandle()
                                      mpSceneHandle.txPort->getText())) {
                     SDL_Log("CANT CREATE TX\n");
                     activeScene = Scenes::MainMenuScene;
-                    InitMainMenuHandle();
+                    return;
                 }
                 SDL_Log("CLIENT TX UP\n");
                 rx_ms = SDL_GetTicks();
@@ -321,6 +331,8 @@ void InitMPSceneHandle()
                 activeScene = Scenes::PlayScene;
                 InitPlaySceneHandle();
             }));
+
+    MP_FIRST_PACKAGE_CAME = false;
 }
 
 void InitPlaySceneHandle()
@@ -361,6 +373,14 @@ void InitPlaySceneHandle()
     cnt = 0;
 }
 
+void InitFinalSceneHandle(bool w)
+{
+    finalSceneHandle.scene.clear();
+    finalSceneHandle.scene.add(
+        HGS::LabelFactory({0.f, 0.f, HGS::SCREEN_W, HGS::SCREEN_H}, (w ? "WIN" : "LOSE"), *defont,
+                          (w ? HGS::BLUE : HGS::BLACK), (w ? HGS::WHITE : HGS::RED)));
+}
+
 void NextRoundPlaySceneActors()
 {
     /**
@@ -399,14 +419,13 @@ void mpRXthread()
             auto res{udpMan.peek()};
             if (res == -1) {
                 SDL_Log("RX DOWN <MinusOne\n");
-                KEEP_CON = false;
                 activeRole = Roles::Idle;
                 activeScene = Scenes::MainMenuScene;
-                InitMainMenuHandle();
                 continue;
             }
             if (res != 0) {
                 rx_ms = SDL_GetTicks();
+                MP_FIRST_PACKAGE_CAME = true;
                 udpMan.read();
                 auto rxBufSlice{udpMan.getRXBufSlice()};
                 SDL_Log("GOT %s\n", rxBufSlice.buf);
@@ -438,17 +457,18 @@ void mpRXthread()
                     ib = ie + 1;
                     ie = buf.find(";", ib);
                     int sec{std::stoi(std::string{buf.substr(ib, ie)})};
+                    SDL_Log("%d %d\n", min, sec);
                     playSceneHandle.min = min;
                     playSceneHandle.sec = sec;
                 }
                 udpMan.clearRXBuf();
             }
-            if ((SDL_GetTicks() - rx_ms) > 60000) {
-                // CONN DEADKE
-                KEEP_CON = false;
+            SDL_Log("%d\n", (SDL_GetTicks() - rx_ms));
+            if (MP_FIRST_PACKAGE_CAME && ((SDL_GetTicks() - rx_ms) > 10000)) {
+                SDL_Log("TIMEOUT\n");
+                MP_FIRST_PACKAGE_CAME = false;
                 activeRole = Roles::Idle;
                 activeScene == Scenes::MainMenuScene;
-                InitMainMenuHandle();
             }
         }
     }
@@ -490,15 +510,144 @@ void mpTXthread()
     SDL_Log("KEEP_CON DEAD, TX THREAD JOINS\n");
 }
 /**
+ * set move player
+ */
+void MovePlayerPaddle()
+{
+    if (press_up) {
+        playSceneHandle.player->setMove(-HGS::PADDLE_SPD);
+        if (auto p{playSceneHandle.player->getPos()}; p.y < 0.f) {
+            p.y = 0.f;
+            playSceneHandle.player->setPos(p);
+        }
+    } else if (press_down) {
+        playSceneHandle.player->setMove(HGS::PADDLE_SPD);
+        if (auto p{playSceneHandle.player->getPos()}; p.y > (HGS::SCREEN_H - HGS::PADDLE_H)) {
+            p.y = (HGS::SCREEN_H - HGS::PADDLE_H);
+            playSceneHandle.player->setPos(p);
+        }
+    } else {
+        playSceneHandle.player->setMove(0.f);
+    }
+}
+/**
+ * set move coh
+ */
+void MoveCOHPaddle()
+{
+    const auto ball_y{playSceneHandle.ball->getPos().y};
+    const auto coh_y{playSceneHandle.coh->getCenPos().y};
+    const auto dy{coh_y - ball_y};
+    if (dy < 0.f) {
+        playSceneHandle.coh->setMove(HGS::PADDLE_SPD);
+
+    } else if (dy > 0.f) {
+        playSceneHandle.coh->setMove(-HGS::PADDLE_SPD);
+    } else {
+        playSceneHandle.coh->setMove(0.f);
+    }
+    if (auto p{playSceneHandle.coh->getPos()}; p.y < 0.f) {
+        p.y = 0.f;
+        playSceneHandle.coh->setPos(p);
+    } else if (auto p{playSceneHandle.coh->getPos()}; p.y > (HGS::SCREEN_H - HGS::PADDLE_H)) {
+        p.y = (HGS::SCREEN_H - HGS::PADDLE_H);
+        playSceneHandle.coh->setPos(p);
+    }
+}
+/**
+ * move ball
+ */
+void MoveBall()
+{
+    const auto [bx, by]{playSceneHandle.ball->getPos()};
+    if (bx < 0.f) {
+        playSceneHandle.coh_score += 1;
+        NextRoundPlaySceneActors();
+    } else if (bx > HGS::SCREEN_W) {
+        playSceneHandle.player_score += 1;
+        NextRoundPlaySceneActors();
+    } else if ((by < 0.f) || (by > (HGS::SCREEN_H - playSceneHandle.ball->getRadius()))) {
+        playSceneHandle.ball->velYinverse();
+    }
+    if (bx < HGS::SCREEN_W / 2.f) {
+        const auto ball_r{playSceneHandle.ball->getRadius()};
+        const auto [x, y]{playSceneHandle.player->getCenPos()};
+        const auto dx{x - bx};
+        const auto dy{y - by};
+        if (dx > (-5.f - ball_r) && dx < (5.f + ball_r)) {
+            if (dy > -(HGS::PADDLE_H / 2.f + ball_r) && dy < (HGS::PADDLE_H / 2.f + ball_r)) {
+                auto vel{playSceneHandle.ball->getVel()};
+                vel.x = -1.f * (vel.x + (0.1 * vel.x));
+                if (vel.y < 0.f) {
+                    vel.y = static_cast<float>(-1 * (std::rand() % 50)) / 10.f;
+                } else {
+                    vel.y = static_cast<float>(std::rand() % 50) / 10.f;
+                }
+                playSceneHandle.ball->setVel(vel);
+            }
+        }
+    } else {
+        const auto ball_r{playSceneHandle.ball->getRadius()};
+        const auto [x, y]{playSceneHandle.coh->getCenPos()};
+        const auto dx{x - bx};
+        const auto dy{y - by};
+        if (dx > (-5.f - ball_r) && dx < (5.f + ball_r)) {
+            if (dy > -(HGS::PADDLE_H / 2.f + ball_r) && dy < (HGS::PADDLE_H / 2.f + ball_r)) {
+                auto vel{playSceneHandle.ball->getVel()};
+                vel.x = -1.f * (vel.x + (0.1 * vel.x));
+                if (vel.y < 0.f) {
+                    vel.y = static_cast<float>(-1 * (std::rand() % 50)) / 10.f;
+                } else {
+                    vel.y = static_cast<float>(std::rand() % 50) / 10.f;
+                }
+                playSceneHandle.ball->setVel(vel);
+            }
+        }
+    }
+}
+/**
+ * update scores
+ */
+void UpdateScores()
+{
+    parser.str("");
+    parser.clear();
+    parser << playSceneHandle.player_score;
+    parser << " : ";
+    parser << playSceneHandle.coh_score;
+    playSceneHandle.scores->setText(parser.str());
+}
+/**
+ * update clock
+ */
+void UpdateClock()
+{
+    parser.str("");
+    parser.clear();
+    if (playSceneHandle.min < 10) {
+        parser << "0";
+    }
+    parser << playSceneHandle.min;
+    parser << ":";
+    if (playSceneHandle.sec < 10) {
+        parser << "0";
+    }
+    parser << playSceneHandle.sec;
+    playSceneHandle.time->setText(parser.str());
+}
+/**
  * **********
  * MAIN ENTRY
  * **********
  */
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+    parser.str("");
+    parser.clear();
     ARGC = argc;
     ARGV = argv;
     activeRole = Roles::Idle;
+    activeScene = Scenes::MainMenuScene;
     std::jthread rxThreadHandle(mpRXthread);
     std::jthread txThreadHandle(mpTXthread);
 #ifdef UDPNS_WINDOWS
@@ -522,7 +671,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         return static_cast<int>(rc);
     }
 
-    activeScene = Scenes::MainMenuScene;
     InitMainMenuHandle();
     milisecs = SDL_GetTicks();
     SDL_Log("\n\n==== MAIN LOOP ===\n\n");
@@ -563,9 +711,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     } else {
                         activeScene = Scenes::MainMenuScene;
                     }
-                } else if (k == SDLK_UP) {
+                } else if ((k == SDLK_UP) || (k == SDLK_W)) {
                     press_up = false;
-                } else if (k == SDLK_DOWN) {
+                } else if ((k == SDLK_DOWN) || (k == SDLK_S)) {
                     press_down = false;
                 } else if (auto i{kInWrite(k)}; i != std::string::npos) {
                     if (activeScene == Scenes::MPScene) {
@@ -584,9 +732,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             } else if (e.type == SDL_EVENT_KEY_DOWN) {
                 const auto& k{e.key.key};
                 if (activeScene == Scenes::PlayScene) {
-                    if (k == SDLK_UP) {
+                    if ((k == SDLK_UP) || (k == SDLK_W)) {
                         press_up = true;
-                    } else if (k == SDLK_DOWN) {
+                    } else if ((k == SDLK_DOWN) || (k == SDLK_S)) {
                         press_down = true;
                     }
                 }
@@ -604,139 +752,53 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             mainMenuHandle.scene.render(r);
         } else if (activeScene == Scenes::MPScene) {
             mpSceneHandle.scene.render(r);
+        } else if (activeScene == Scenes::FinalScene) {
+            finalSceneHandle.scene.render(r);
         } else if (activeScene == Scenes::PlayScene) {
             /**
              * update render stuff
              */
-            playSceneHandle.player->step(1.f);
-            if (activeRole != Roles::Client) {
+            if (activeRole == Roles::Idle) {
+                playSceneHandle.player->step(1.f);
                 playSceneHandle.ball->step(1.f);
                 playSceneHandle.coh->step(1.f);
+            } else if (MP_FIRST_PACKAGE_CAME) {
+                playSceneHandle.player->step(1.f);
+                if (activeRole != Roles::Client) {
+                    playSceneHandle.ball->step(1.f);
+                    playSceneHandle.coh->step(1.f);
+                }
             }
-            parser.str("");
-            parser.clear();
-            if (playSceneHandle.min < 10) {
-                parser << "0";
-            }
-            parser << playSceneHandle.min;
-            parser << ":";
-            if (playSceneHandle.sec < 10) {
-                parser << "0";
-            }
-            parser << playSceneHandle.sec;
-            playSceneHandle.time->setText(parser.str());
-            // if (playSceneHandle.player_score == 3) {
-            //     // player win
-            //     activeScene = Scenes::MainMenuScene;
-            // } else if (playSceneHandle.coh_score == 3) {
-            //     // coa win
-            //     activeScene = Scenes::MainMenuScene;
-            // }
+            
+            UpdateClock();
 
-            parser.str("");
-            parser.clear();
-            parser << playSceneHandle.player_score;
-            parser << " : ";
-            parser << playSceneHandle.coh_score;
-            playSceneHandle.scores->setText(parser.str());
-            /**
-             * set move player
-             */
-            if (press_up) {
-                playSceneHandle.player->setMove(-HGS::PADDLE_SPD);
-                if (auto p{playSceneHandle.player->getPos()}; p.y < 0.f) {
-                    p.y = 0.f;
-                    playSceneHandle.player->setPos(p);
-                }
-            } else if (press_down) {
-                playSceneHandle.player->setMove(HGS::PADDLE_SPD);
-                if (auto p{playSceneHandle.player->getPos()};
-                    p.y > (HGS::SCREEN_H - HGS::PADDLE_H)) {
-                    p.y = (HGS::SCREEN_H - HGS::PADDLE_H);
-                    playSceneHandle.player->setPos(p);
-                }
-            } else {
-                playSceneHandle.player->setMove(0.f);
+            if (playSceneHandle.player_score == 3) {
+                // player win
+                activeScene = Scenes::FinalScene;
+                InitFinalSceneHandle(true);
+            } else if (playSceneHandle.coh_score == 3) {
+                // coa win
+                activeScene = Scenes::FinalScene;
+                InitFinalSceneHandle(false);
             }
 
+            UpdateScores();
+
+            MovePlayerPaddle();
             /**
              * set move coa
              */
             if (activeRole == Roles::Idle) {
-                const auto ball_y{playSceneHandle.ball->getPos().y};
-                const auto coh_y{playSceneHandle.coh->getCenPos().y};
-                const auto dy{coh_y - ball_y};
-                if (dy < 0.f) {
-                    playSceneHandle.coh->setMove(HGS::PADDLE_SPD);
-
-                } else if (dy > 0.f) {
-                    playSceneHandle.coh->setMove(-HGS::PADDLE_SPD);
-                } else {
-                    playSceneHandle.coh->setMove(0.f);
-                }
-                if (auto p{playSceneHandle.coh->getPos()}; p.y < 0.f) {
-                    p.y = 0.f;
-                    playSceneHandle.coh->setPos(p);
-                } else if (auto p{playSceneHandle.coh->getPos()};
-                           p.y > (HGS::SCREEN_H - HGS::PADDLE_H)) {
-                    p.y = (HGS::SCREEN_H - HGS::PADDLE_H);
-                    playSceneHandle.coh->setPos(p);
-                }
+                MoveCOHPaddle();
             }
 
             /**
              * set vel ball
              */
             if (activeRole != Roles::Client) {
-                const auto [bx, by]{playSceneHandle.ball->getPos()};
-                if (bx < 0.f) {
-                    playSceneHandle.coh_score += 1;
-                    NextRoundPlaySceneActors();
-                } else if (bx > HGS::SCREEN_W) {
-                    playSceneHandle.player_score += 1;
-                    NextRoundPlaySceneActors();
-                } else if ((by < 0.f) ||
-                           (by > (HGS::SCREEN_H - playSceneHandle.ball->getRadius()))) {
-                    playSceneHandle.ball->velYinverse();
-                }
-                if (bx < HGS::SCREEN_W / 2.f) {
-                    const auto ball_r{playSceneHandle.ball->getRadius()};
-                    const auto [x, y]{playSceneHandle.player->getCenPos()};
-                    const auto dx{x - bx};
-                    const auto dy{y - by};
-                    if (dx > (-5.f - ball_r) && dx < (5.f + ball_r)) {
-                        if (dy > -(HGS::PADDLE_H / 2.f + ball_r) &&
-                            dy < (HGS::PADDLE_H / 2.f + ball_r)) {
-                            auto vel{playSceneHandle.ball->getVel()};
-                            vel.x = -1.f * (vel.x + (0.1 * vel.x));
-                            if (vel.y < 0.f) {
-                                vel.y = static_cast<float>(-1 * (std::rand() % 50)) / 10.f;
-                            } else {
-                                vel.y = static_cast<float>(std::rand() % 50) / 10.f;
-                            }
-                            playSceneHandle.ball->setVel(vel);
-                        }
-                    }
-                } else {
-                    const auto ball_r{playSceneHandle.ball->getRadius()};
-                    const auto [x, y]{playSceneHandle.coh->getCenPos()};
-                    const auto dx{x - bx};
-                    const auto dy{y - by};
-                    if (dx > (-5.f - ball_r) && dx < (5.f + ball_r)) {
-                        if (dy > -(HGS::PADDLE_H / 2.f + ball_r) &&
-                            dy < (HGS::PADDLE_H / 2.f + ball_r)) {
-                            auto vel{playSceneHandle.ball->getVel()};
-                            vel.x = -1.f * (vel.x + (0.1 * vel.x));
-                            if (vel.y < 0.f) {
-                                vel.y = static_cast<float>(-1 * (std::rand() % 50)) / 10.f;
-                            } else {
-                                vel.y = static_cast<float>(std::rand() % 50) / 10.f;
-                            }
-                            playSceneHandle.ball->setVel(vel);
-                        }
-                    }
-                }
+                MoveBall();
             }
+
             /**
              * render finalized screen
              */
@@ -744,11 +806,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         }
         SDL_RenderPresent(r);
 
-        while ((SDL_GetTicks() - milisecs) < 1000 / 60) {
+        while ((SDL_GetTicks() - milisecs) < (1000 / 60)) {
             ;
         }
         milisecs = SDL_GetTicks();
-        ++cnt;
+        if (activeRole == Roles::Idle) {
+            ++cnt;
+        } else if (MP_FIRST_PACKAGE_CAME) {
+            ++cnt;
+        }
+
         if (activeRole != Roles::Client) {
             playSceneHandle.min = cnt / 3600;
             playSceneHandle.sec = (cnt / 60) % 60;

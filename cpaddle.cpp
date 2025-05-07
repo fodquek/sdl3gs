@@ -25,6 +25,7 @@ Paddle* PaddleFactory(const SDL_FRect& g, const SDL_Color& bg)
     paddle->setBG(bg);
     paddle->setPos({g.x, g.y});
     paddle->setWH({g.w, g.h});
+    paddle->setMove(0.f);
     return paddle;
 }
 } // namespace HGS
