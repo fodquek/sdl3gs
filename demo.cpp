@@ -11,9 +11,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <vector>
 #include <ostream>
-#include <algorithm>
 #include <thread>
 #include <iomanip>
 
@@ -448,6 +446,9 @@ void mpRXthread()
                     ib = ie + 1;
                     ie = buf.find(";", ib);
                     int scores{std::stoi(std::string{buf.substr(ib, ie)})};
+                    if (playSceneHandle.player_score != scores % 10) {
+                        playSceneHandle.player->setPos(HGS::PADDLE_L_PX, HGS::PADDLE_PY);
+                    }
                     playSceneHandle.player_score = scores % 10;
                     playSceneHandle.coh_score = scores / 10;
 
@@ -648,14 +649,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     ARGV = argv;
     activeRole = Roles::Idle;
     activeScene = Scenes::MainMenuScene;
-    std::jthread rxThreadHandle(mpRXthread);
-    std::jthread txThreadHandle(mpTXthread);
 #ifdef UDPNS_WINDOWS
     if (!UDPNS::initWSA()) {
         std::cerr << "WSA DOES NOT INIT, terminating...\n";
         return -2;
     }
 #endif
+    std::jthread rxThreadHandle(mpRXthread);
+    std::jthread txThreadHandle(mpTXthread);
+
 
     std::srand(static_cast<unsigned int>(std::time(0)));
     if (const auto rc{HGS::ENG::init()}; rc != HGS::RC::OK) {
@@ -769,7 +771,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     playSceneHandle.coh->step(1.f);
                 }
             }
-            
+
             UpdateClock();
 
             if (playSceneHandle.player_score == 3) {
